@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#a86148">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1179,6 +1179,36 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
  .life-card{padding-block:10px;}
 }
 
+
+/* Fit the visible mobile viewport while retaining the v1.1.10 control sizes. */
+:root{--viewport-height:100vh;--viewport-width:100vw;--viewport-top:0px;--viewport-left:0px;--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--dialog-margin:24px;}
+@supports(height:100dvh){:root{--viewport-height:100dvh;}}
+html{height:auto;min-height:100%;overflow-x:hidden;overflow-x:clip;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);touch-action:manipulation;}
+.wrap{width:100%;max-width:560px;min-width:0;}
+.wrap>.panel,#grid,.wrap>.combo-tip{min-width:0;max-width:100%;}
+.modal{width:calc(var(--viewport-width) - var(--safe-left) - var(--safe-right) - var(--dialog-margin));max-width:440px;max-height:calc(var(--viewport-height) - var(--safe-top) - var(--safe-bottom) - 40px);top:calc(var(--viewport-top) + (var(--viewport-height) + var(--safe-top) - var(--safe-bottom)) / 2);left:calc(var(--viewport-left) + (var(--viewport-width) + var(--safe-left) - var(--safe-right)) / 2);overscroll-behavior:contain;}
+.modal input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),.modal select,.modal textarea{font-size:16px;}
+.save-safety-gate,.expense-confirm-layer{inset:auto;top:var(--viewport-top);left:var(--viewport-left);width:var(--viewport-width);height:var(--viewport-height);}
+.save-safety-gate{padding:max(12px,var(--safe-top)) max(12px,var(--safe-right)) max(12px,var(--safe-bottom)) max(12px,var(--safe-left));}
+.expense-confirm-layer{padding:max(18px,var(--safe-top)) max(14px,var(--safe-right)) max(18px,var(--safe-bottom)) max(14px,var(--safe-left));}
+.save-gate-panel,.expense-confirm-card{max-height:100%;}
+#toast{top:calc(var(--viewport-top) + max(16px,var(--safe-top)));left:calc(var(--viewport-left) + (var(--viewport-width) + var(--safe-left) - var(--safe-right)) / 2);max-width:calc(var(--viewport-width) - var(--safe-left) - var(--safe-right) - 24px);}
+.header.viewport-header-wrap{grid-template-columns:minmax(0,1fr) 22px;row-gap:4px;}
+.header.viewport-header-wrap h1{grid-column:1;grid-row:1;}
+.header.viewport-header-wrap .hbtns{grid-column:2;grid-row:1;}
+.header.viewport-header-wrap .topbar{grid-column:1/-1;grid-row:2;width:100%;justify-content:center;}
+@media(max-width:350px){:root{--dialog-margin:18px;}}
+@media(min-width:600px) and (orientation:landscape){
+ .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:8px;align-items:start;max-width:960px;}
+ .wrap>.header{grid-column:1/-1;grid-row:1;}
+ .wrap>.orders-panel{grid-column:1;grid-row:2;}
+ .wrap>#grid{grid-column:1;grid-row:3;}
+ .wrap>#comboTip{grid-column:1;grid-row:4;}
+ .wrap>.generators-panel{grid-column:2;grid-row:2/span 2;}
+ .wrap>.functions-panel{grid-column:2;grid-row:4;}
+}
+
 </style>
 </head>
 <body>
@@ -1198,7 +1228,7 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
   </div>
 
 <!-- 食客订单（紧邻金币/体力下方，刷新按钮在右上角，点击订单查看详情） -->
-  <div class="panel">
+  <div class="panel orders-panel">
     <h3><span>📋食客订单 <button class="help-button" onclick="openHelp()" aria-label="查看玩法说明">!</button></span><button id="btnRefresh" class="btn-sm btn-green" onclick="refreshOrders()" style="margin:0;">🔄刷新 160💰</button></h3>
     <div id="orderList"></div>
     <div id="orderReadyStatus" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -1209,7 +1239,7 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
   <!-- 选中食材的合成路径提示 -->
   <div class="combo-tip" id="comboTip"></div>
 
-  <div class="panel">
+  <div class="panel generators-panel">
     <h3><span>🧺发射器</span><button class="mini-action generator-upgrade-trigger" onclick="openUpgrades()" aria-label="发射器升级">⬆升级</button></h3>
     <div class="gen-row" id="genBox"></div>
   </div>
@@ -1280,7 +1310,7 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
   <p class="path-note" id="saveModeDescription">进度自动保存；换版本或设备可通过存档管理导出、导入。</p>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.10</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.11</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1368,7 +1398,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.1.10';
+const GAME_VERSION = '1.1.11';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -4640,17 +4670,51 @@ function fitControls(){
 function fitHeaderText(){
   const header=document.querySelector('.header'),title=document.querySelector('.game-title');
   if(header&&title&&header.clientWidth>0){
+    header.classList.remove('viewport-header-wrap');
     header.style.setProperty('--status-scale','1');title.style.fontSize='9px';
     let scale=1;
     while(scale>.74&&(title.scrollWidth>title.clientWidth+1||header.scrollWidth>header.clientWidth+1)){
       scale=Math.max(.74,scale-.02);header.style.setProperty('--status-scale',scale.toFixed(2));
+    }
+    if(title.scrollWidth>title.clientWidth+1||header.scrollWidth>header.clientWidth+1){
+      header.classList.add('viewport-header-wrap');scale=1;
+      header.style.setProperty('--status-scale','1');
+      while(scale>.74&&header.scrollWidth>header.clientWidth+1){
+        scale=Math.max(.74,scale-.02);header.style.setProperty('--status-scale',scale.toFixed(2));
+      }
     }
     fitTextWithinBox(title,9);
   }
   const goldPill=document.querySelector('.pill.gold');
   if(goldPill){goldPill.title='金币 '+gold;goldPill.setAttribute('aria-label','金币 '+gold);}
 }
-window.addEventListener('resize',fitControls);
+let responsiveViewportFrame=0,responsiveLayoutKey='';
+function queueResponsiveViewport(){
+ if(responsiveViewportFrame)return;
+ responsiveViewportFrame=requestAnimationFrame(()=>{
+  responsiveViewportFrame=0;
+  const viewport=window.visualViewport;
+  // Let browser pinch zoom behave naturally instead of resizing the game again.
+  if(viewport&&Math.abs(viewport.scale-1)>.05)return;
+  const root=document.documentElement;
+  const width=Math.max(1,viewport?.width||window.innerWidth||root.clientWidth);
+  const height=Math.max(1,viewport?.height||window.innerHeight||root.clientHeight);
+  const top=Math.max(0,viewport?.offsetTop||0),left=Math.max(0,viewport?.offsetLeft||0);
+  root.style.setProperty('--viewport-width',width+'px');
+  root.style.setProperty('--viewport-height',height+'px');
+  root.style.setProperty('--viewport-top',top+'px');
+  root.style.setProperty('--viewport-left',left+'px');
+  const layoutKey=width+':'+window.matchMedia('(min-width:600px) and (orientation:landscape)').matches;
+  if(layoutKey!==responsiveLayoutKey){responsiveLayoutKey=layoutKey;fitControls();}
+ });
+}
+window.addEventListener('resize',queueResponsiveViewport,{passive:true});
+window.addEventListener('orientationchange',queueResponsiveViewport,{passive:true});
+window.visualViewport?.addEventListener('resize',queueResponsiveViewport,{passive:true});
+window.visualViewport?.addEventListener('scroll',queueResponsiveViewport,{passive:true});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)queueResponsiveViewport();});
+queueResponsiveViewport();
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(closeInlineMenus()){e.preventDefault();return;}document.querySelectorAll('.modal').forEach(m=>m.style.display='none');}});
 function closeModal(id){closeInlineMenus();document.getElementById(id).style.display='none';sfx('click');}
 
