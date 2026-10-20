@@ -1157,6 +1157,28 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
 .save-text-input{display:block;width:100%;min-height:160px;max-height:32vh;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:16px/1.5 ui-monospace,monospace;user-select:text!important;-webkit-user-select:text!important;-webkit-touch-callout:default;touch-action:pan-y;overflow-wrap:anywhere;resize:vertical;}
 .save-text-panel .btn-row button{min-height:40px;font-size:13px;}
 
+
+/* A small vertical adjustment to the v1.1.8 layout. */
+.wrap>.header{min-height:24px;}
+.header .topbar .pill{height:22px;min-height:22px;}
+.wrap>.panel{padding-block:8px;}
+#orderList .order{min-height:32px;padding-block:3px;}
+#grid{padding-block:5px;}
+.wrap .gen-row>.gen-card{grid-template-rows:11px 23px 21px;padding-block:3px;}
+.wrap .gen-card .gen-btn,.wrap .gen-lock-preview{height:23px;}
+.wrap .gen-card .lv-trigger,.wrap .gen-card .gen-unlock-trigger{height:21px;}
+.wrap>.panel .btn-row>button{height:29px;min-height:29px;}
+.wrap>.combo-tip{padding-block:7px;}
+.modal{padding-block:14px;}
+.modal-head{top:-14px;}
+.regular-card{padding-block:10px;}
+.life-card{padding-block:12px;}
+@media(max-width:350px){
+ .modal{padding-block:12px;}
+ .modal-head{top:-12px;}
+ .life-card{padding-block:10px;}
+}
+
 </style>
 </head>
 <body>
@@ -1258,7 +1280,7 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
   <p class="path-note" id="saveModeDescription">进度自动保存；换版本或设备可通过存档管理导出、导入。</p>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.8</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.10</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1346,7 +1368,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.1.8';
+const GAME_VERSION = '1.1.10';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
