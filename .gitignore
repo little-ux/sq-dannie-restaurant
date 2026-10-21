@@ -1,0 +1,3 @@
+02-set-admin.sql
+*.private.json
+__pycache__/

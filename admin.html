@@ -1,0 +1,199 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>SQ开的餐厅 · 玩家管理</title><style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.6 system-ui,-apple-system,sans-serif;background:#f4f1e8;color:#49483e;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}main{max-width:920px;margin:auto;padding:16px}header{display:flex;justify-content:space-between;align-items:center;gap:10px}h1{font-size:21px}h2{font-size:18px;margin-top:0}button,input,select,textarea{font:inherit}button{border:1px solid #ddd5c6;border-radius:9px;padding:8px 12px;background:#fffdf8;color:#49483e;cursor:pointer;min-height:40px}button.primary{background:#a86148;color:white}button:disabled{opacity:.5;cursor:default}a{color:#88563d}.actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.card{background:#fffdf8;border:1px solid #e4dfd2;border-radius:14px;padding:14px;margin:12px 0;min-width:0}label{display:block;font-size:13px;margin:9px 0}input,select,textarea{display:block;width:100%;padding:9px;border:1px solid #ddd5c6;border-radius:8px;background:#fffdf8;min-height:42px;font-size:16px}small,.muted{color:#827860;font-size:13px}.error{color:#a44f43;white-space:pre-wrap}.players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.players .card{margin:0}.player-name{font-size:17px;overflow-wrap:anywhere}.player-mail{overflow-wrap:anywhere}.stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.stats span{background:#f4ead8;padding:3px 7px;border-radius:7px}.banned{color:#a44f43;font-weight:700}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.audit{padding:10px 0;border-bottom:1px solid #e4dfd2;overflow-wrap:anywhere}.overlay{position:fixed;inset:0;z-index:50;background:#252c2b99;display:flex;align-items:center;justify-content:center;padding:16px}.overlay[hidden]{display:none}.dialog{max-width:480px;width:100%;max-height:calc(100dvh - 32px);overflow:auto;background:#fffdf8;border-radius:15px;padding:17px}.dialog>header h2{margin:0}.raw{overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px/1.6 ui-monospace,monospace;max-height:260px;background:#f4f1e8;padding:8px;border-radius:7px}.notice{padding:9px;background:#edf2e9;border-radius:8px}.toolbar{display:flex;gap:7px}.toolbar input{min-width:0}.toolbar button{white-space:nowrap}body>footer{padding:10px;text-align:center;font-size:12px;color:#827860}@media(max-width:620px){main{padding:12px}.players{grid-template-columns:1fr}header{flex-wrap:wrap}.form-grid{gap:0 8px}.dialog{max-height:calc(100dvh - 24px)}}
+.overlay{inset:auto 0;top:var(--admin-vtop,0px);height:var(--admin-vh,100dvh);padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}.dialog{max-height:100%}
+</style></head><body><main id="adminMain"><header><h1>SQ开的餐厅 · 玩家管理</h1><div class="actions"><a href="./">返回游戏</a><button id="adminLogout" hidden>退出管理</button></div></header><p class="muted" id="adminIdentity"></p><div id="adminContent"></div><p class="error" id="adminError" role="status"></p></main><div id="adminDialog" class="overlay" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="adminDialogTitle"><header><h2 id="adminDialogTitle"></h2><button id="adminDialogClose" aria-label="关闭">×</button></header><div id="adminDialogBody"></div><p id="adminDialogError" class="error" role="status"></p></section></div><footer>管理权限由服务器验证 · 1.2.0</footer><script type="application/json" id="sqAccountConfig">{"url": "https://xkskkuvvhibdqisgenlp.supabase.co", "publishableKey": "sb_publishable_6Q-tt4aNrK2QxsOgaS-Guw_v8IrSoSO", "guestEnabled": true, "apiVersion": 1}</script><script>
+/* Shared account transport. Public project key only; administrator checks live in SQL. */
+window.SQCloudAPI=class SQCloudAPI{
+ constructor(config){
+  this.config=config||{};this.session=null;this.refreshing=null;this.memory=null;this.pendingRedirect=null;
+  this.url=String(this.config.url||'').trim().replace(/\/$/,'');this.key=String(this.config.publishableKey||'').trim();
+  this.enabled=!!(this.url&&this.key);this.storageKey='sq.restaurant.auth';
+  if(this.enabled){
+   const u=new URL(this.url);if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash||u.pathname!=='/')throw Error('账号服务地址必须是HTTPS项目根地址');
+   if(this.key.startsWith('sb_secret_'))throw Error('网页不能使用服务端密钥');
+   try{const claims=JSON.parse(atob(this.key.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(claims.role==='service_role')throw Error('SECRET_KEY');}
+   catch(e){if(e.message==='SECRET_KEY')throw Error('网页不能使用service_role密钥');}
+   this.storageKey+=':'+u.host;this.session=this.readSession();
+  }
+ }
+ readSession(){try{const s=JSON.parse(localStorage.getItem(this.storageKey)||'null');return s?.access_token&&s?.refresh_token&&s?.user?.id?s:null;}catch(e){return this.memory;}}
+ storeSession(value,persist=true){
+  if(!value?.access_token||!value?.refresh_token||!value?.user?.id)throw Error('登录会话不完整');
+  this.session={access_token:value.access_token,refresh_token:value.refresh_token,expires_at:value.expires_at||Math.floor(Date.now()/1000)+(value.expires_in||3600),user:{id:value.user.id,email:value.user.email||''}};
+  this.memory=this.session;try{if(persist)localStorage.setItem(this.storageKey,JSON.stringify(this.session));}catch(e){}
+  return this.session;
+ }
+ clearSession(){const owner=this.session?.user.id||this.memory?.user.id;this.session=null;this.memory=null;try{const stored=JSON.parse(localStorage.getItem(this.storageKey)||'null');if(!stored||stored.user?.id===owner)localStorage.removeItem(this.storageKey);}catch(e){}}
+ async request(path,{method='POST',body,token,timeout=25000}={}){
+  if(!this.enabled)throw Error('账号服务尚未配置');
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{
+   const headers={'apikey':this.key,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
+   const response=await fetch(this.url+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal,credentials:'omit',cache:'no-store'});
+   const text=await response.text();let data=null;try{data=text?JSON.parse(text):null;}catch(e){throw Error('账号服务返回了无法识别的内容');}
+   if(!response.ok){
+    const error=Error(data?.message||data?.msg||data?.error_description||'账号请求失败');error.status=response.status;error.code=data?.code||data?.error_code||'';error.detail=data?.details||'';throw error;
+   }
+   return data;
+  }catch(e){if(e.name==='AbortError')throw Error('连接超时，本机进度仍保留');throw e;}finally{clearTimeout(timer);}
+ }
+ async refresh(force=false){
+  if(this.refreshing)return this.refreshing;
+  const work=async()=>{
+   if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
+   const saved=this.readSession();if(!force&&saved&&saved.user.id===this.session.user.id&&saved.expires_at>this.session.expires_at)this.session=saved;
+   if(!force&&this.session?.expires_at>Date.now()/1000+60)return this.session;
+   if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
+   try{const result=await this.request('/auth/v1/token?grant_type=refresh_token',{body:{refresh_token:this.session.refresh_token}});return this.storeSession(result,this.readSession()?.user.id===result.user.id);}
+   catch(e){if([400,401].includes(e.status)){this.clearSession();throw Error('AUTH_REQUIRED');}throw e;}
+  };
+  this.refreshing=(navigator.locks?navigator.locks.request(this.storageKey+':refresh',work):work()).finally(()=>{this.refreshing=null;});return this.refreshing;
+ }
+ async rpc(name,args={}){
+  if(!/^sq_[a-z_]+$/.test(name))throw Error('无效的账号操作');
+  const actor=this.session?.user.id;
+  try{
+   await this.refresh();if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');
+   try{return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}
+   catch(e){if(e.status===401&&this.session?.refresh_token){await this.refresh(true);if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}throw e;}
+  }catch(e){e.accountId=actor;throw e;}
+ }
+ async signIn(email,password){
+  const result=await this.request('/auth/v1/token?grant_type=password',{body:{email:email.trim(),password}});return this.storeSession(result);
+ }
+ async signUp(email,password,name,redirect){
+  const result=await this.request('/auth/v1/signup?redirect_to='+encodeURIComponent(redirect),{body:{email:email.trim(),password,data:{display_name:name.trim()}}});
+  if(result?.access_token)this.storeSession(result);return result;
+ }
+ async recover(email,redirect){return this.request('/auth/v1/recover?redirect_to='+encodeURIComponent(redirect),{body:{email:email.trim()}});}
+ async changePassword(password){await this.refresh();return this.request('/auth/v1/user',{method:'PUT',body:{password},token:this.session.access_token});}
+ async verifyEmailCode(email,code,type){
+  if(!['signup','recovery'].includes(type))throw Error('请选择注册确认或找回密码');
+  const result=await this.request('/auth/v1/verify',{body:{email:email.trim(),token:code.trim(),type}});
+  return this.storeSession(result);
+ }
+ async resendSignup(email,redirect){return this.request('/auth/v1/resend?redirect_to='+encodeURIComponent(redirect),{body:{type:'signup',email:email.trim()}});}
+ async acceptRedirect(){
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.has('error')||h.has('error_description')||h.has('error_code')){
+   this.pendingRedirect=null;history.replaceState(null,'',location.pathname+location.search);
+   throw Error('邮件验证链接已失效，请重新发送邮件，或填写邮件验证码');
+  }
+  if(h.has('access_token')){
+   this.pendingRedirect={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),type:h.get('type'),expires_in:Number(h.get('expires_in'))||3600};
+   history.replaceState(null,'',location.pathname+location.search);
+  }
+  const pending=this.pendingRedirect;
+  if(!pending)return false;
+  if(!pending.access_token||!pending.refresh_token){this.pendingRedirect=null;throw Error('邮件验证信息不完整，请重新发送邮件或填写验证码');}
+  const user=await this.request('/auth/v1/user',{method:'GET',token:pending.access_token});
+  this.storeSession({...pending,user});this.pendingRedirect=null;
+  return pending.type==='recovery';
+ }
+ async signOut(){try{if(this.session)await this.request('/auth/v1/logout?scope=local',{body:{},token:this.session.access_token});}finally{this.clearSession();}}
+ static id(){if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((n,i)=>([4,6,8,10].includes(i)?'-':'')+n.toString(16).padStart(2,'0')).join('');}
+ static message(e){
+  const code=e?.message||String(e),messages={ACCOUNT_BANNED:'账号已被停用'+(e.detail?'：'+e.detail:''),ADMIN_REQUIRED:'此账号没有管理权限',AUTH_REQUIRED:'请重新登录',SESSION_MOVED:'另一设备正在经营，已暂停同步',CLOUD_CONFLICT:'云端进度已更新，请核对后继续',REQUEST_REUSED:'操作编号发生冲突，请重新操作',REWARD_NOT_AVAILABLE:'奖励已领取或不属于当前账号',REWARD_STATE_CHANGED:'进度已变化，请重试领取',REWARD_AMOUNT_INVALID:'奖励数量校验未通过',SAVE_SIZE_INVALID:'存档超过云端8MB限制，请先导出本机备份',invalid_credentials:'邮箱或密码不正确'};
+  return messages[code]||(/invalid login credentials/i.test(code)?'邮箱或密码不正确':code);
+ }
+};
+
+window.SQAdmin={
+ api:null,player:null,offset:0,search:'',busy:false,op:null,
+ h(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));},
+ set(id,text){document.getElementById(id).textContent=text;},
+ bind(id,fn){document.getElementById(id)?.addEventListener('click',()=>this.run(fn));},
+ async run(fn){
+  if(this.busy)return;this.busy=true;const buttons=new Map([...document.querySelectorAll('button')].map(b=>[b,b.disabled]));buttons.forEach((v,b)=>b.disabled=true);
+  this.set('adminError','');this.set('adminDialogError','');
+  try{await fn();}catch(e){this.set(document.getElementById('adminDialog').hidden?'adminError':'adminDialogError',SQCloudAPI.message(e));}
+  finally{this.busy=false;buttons.forEach((v,b)=>{if(b.isConnected)b.disabled=v;});}
+ },
+ async init(){
+  this.api=new SQCloudAPI(JSON.parse(document.getElementById('sqAccountConfig').textContent));
+  document.getElementById('adminDialogClose').addEventListener('click',()=>{if(!this.busy)this.close();});
+  document.getElementById('adminDialog').addEventListener('keydown',e=>{
+   if(e.key==='Escape'){e.stopPropagation();if(!this.busy&&!this.op)this.close();}
+   if(e.key==='Tab'){const root=document.getElementById('adminDialog'),list=[...root.querySelectorAll('button:not([disabled]):not([hidden]),input,textarea,select')].filter(e=>e.getClientRects().length);if(e.shiftKey&&document.activeElement===list[0]){e.preventDefault();list.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===list.at(-1)){e.preventDefault();list[0]?.focus();}}
+  });
+  this.bind('adminLogout',async()=>{if(this.op)throw Error('请先确认上次待处理操作');await this.api.signOut();this.player=null;this.login();});
+  window.addEventListener('storage',event=>{
+   if(event.key!==this.api.storageKey||!this.player)return;const next=this.api.readSession();if(next?.user.id===this.player.id)return;
+   this.op=null;this.player=null;document.getElementById('adminDialog').hidden=true;document.getElementById('adminMain').inert=false;this.login();this.set('adminError','浏览器登录状态已变化，请重新登录管理账号。');
+  });
+  if(!this.api.enabled){this.set('adminContent','账号服务尚未配置。请先安装数据库并填写项目公开配置。');return;}
+  const fit=()=>{const v=window.visualViewport;if(v&&Math.abs(v.scale-1)>.05)return;document.documentElement.style.setProperty('--admin-vh',(v?.height||innerHeight)+'px');document.documentElement.style.setProperty('--admin-vtop',(v?.offsetTop||0)+'px');};
+  fit();window.addEventListener('resize',fit);window.visualViewport?.addEventListener('resize',fit);window.visualViewport?.addEventListener('scroll',fit);
+  if(this.api.session){try{await this.verify();}catch(e){this.login();this.set('adminError',SQCloudAPI.message(e));}}else this.login();
+ },
+ login(){
+  document.getElementById('adminLogout').hidden=true;this.set('adminIdentity','');
+  document.getElementById('adminContent').innerHTML='<section class="card"><h2>管理员登录</h2><label>邮箱<input id="adminEmail" type="email" autocomplete="username" inputmode="email" maxlength="254"></label><label>密码<input id="adminPassword" type="password" autocomplete="current-password" maxlength="128"></label><div class="actions"><button id="adminSignIn" class="primary">登录管理后台</button></div><p class="muted">请使用已由项目所有者授予管理权限的账号。注册和找回密码请在游戏的账号入口完成。</p></section>';
+  this.bind('adminSignIn',async()=>{await this.api.signIn(document.getElementById('adminEmail').value,document.getElementById('adminPassword').value);await this.verify();});
+ },
+ async verify(){
+  const boot=await this.api.rpc('sq_bootstrap');if(this.api.session?.user.id!==boot.player.id)throw Error('SESSION_CHANGED');if(!boot.admin)throw Error('ADMIN_REQUIRED');this.player=boot.player;
+  this.set('adminIdentity',boot.player.name+' · '+this.api.session.user.email);document.getElementById('adminLogout').hidden=false;
+  try{const op=JSON.parse(localStorage.getItem('sq.restaurant.admin.pending:'+this.player.id)||'null');if(op?.actor===this.player.id)this.op=op;}catch(e){}
+  await this.list();if(this.op)this.confirmOperation();
+ },
+ modal(title,html){
+  const d=document.getElementById('adminDialog');document.getElementById('adminMain').inert=true;d.hidden=false;this.set('adminDialogTitle',title);document.getElementById('adminDialogBody').innerHTML=html;this.set('adminDialogError','');document.getElementById('adminDialogClose').hidden=!!this.op;requestAnimationFrame(()=>d.querySelector('input,button:not([hidden])')?.focus());
+ },
+ close(){if(this.op)return;document.getElementById('adminDialog').hidden=true;document.getElementById('adminMain').inert=false;},
+ async list(){
+  const actor=this.player?.id;if(!actor)throw Error('ADMIN_REQUIRED');const result=await this.api.rpc('sq_admin_list',{p_search:this.search,p_offset:this.offset,p_limit:30});if(this.player?.id!==actor)return;this.players=result.players;
+  document.getElementById('adminContent').innerHTML=`<section class="card"><div class="toolbar"><input id="adminSearch" placeholder="搜索昵称或邮箱" maxlength="80" aria-label="搜索玩家" value="${this.h(this.search)}"><button id="adminSearchButton">搜索</button></div><div class="actions"><button id="adminGrantAll" class="primary">全体补发奖励</button><button id="adminAudit">管理记录</button><button id="adminRefresh">刷新列表</button></div><small>共${result.total}位已登录玩家，游客不在管理列表中。</small></section><div class="players">${result.players.map((p,i)=>`<article class="card"><b class="player-name">${this.h(p.name)}</b><div class="player-mail muted">${this.h(p.email)}</div><div class="stats"><span>Lv${p.summary?.level||1}</span><span>${p.summary?.gold??'—'}金币</span><span>${p.summary?.gridSize??'—'}格</span><span class="${p.banned?'banned':''}">${p.banned?'已封禁':'正常'}</span></div><small>最近活动：${this.h(new Date(p.lastSeenAt).toLocaleString())}</small><div class="actions"><button id="adminView${i}">查看进度</button><button id="adminGift${i}">补发奖励</button><button id="adminBan${i}">${p.banned?'解除封禁':'封禁'}</button></div></article>`).join('')}</div><div class="actions"><button id="adminPrev" ${this.offset===0?'disabled':''}>上一页</button><button id="adminNext" ${this.offset+30>=result.total?'disabled':''}>下一页</button></div>`;
+  this.bind('adminSearchButton',()=>{this.search=document.getElementById('adminSearch').value;this.offset=0;return this.list();});this.bind('adminRefresh',()=>this.list());
+  this.bind('adminPrev',()=>{this.offset=Math.max(0,this.offset-30);return this.list();});this.bind('adminNext',()=>{this.offset+=30;return this.list();});
+  this.bind('adminGrantAll',()=>this.grantForm());this.bind('adminAudit',()=>this.audit());
+  this.players.forEach((p,i)=>{this.bind('adminView'+i,()=>this.view(p.id));this.bind('adminGift'+i,()=>this.grantForm(p));this.bind('adminBan'+i,()=>this.banForm(p));});
+ },
+ download(raw,name){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);},
+ async view(id){
+  const actor=this.player?.id,p=await this.api.rpc('sq_admin_player',{p_user_id:id});if(this.player?.id!==actor)return;const cloud=p.cloud,s=cloud.summary;
+  const raw=cloud.raw?JSON.parse(cloud.raw):null,tools={speed:'加速卡',bomb:'炸弹',tempSlot:'临时格',mergeAll:'一键合并',infinite:'无限体力'};
+  this.modal('玩家进度',`<p><b>${this.h(p.name)}</b><br>${this.h(p.email)}</p>${raw?`<div class="stats"><span>Lv${s.level}</span><span>${s.gold}金币</span><span>体力${s.stamina}/${s.staminaCap}</span><span>${s.gridSize}格</span><span>交付${s.deliver||0}单</span></div><p>${Object.entries(raw.state.inv).map(([k,n])=>this.h(tools[k]||k)+'×'+n).join(' · ')}</p><p class="muted">已解锁发射器：${raw.state.gens.filter(g=>g.unlocked).map(g=>'食材'+g.itemId+' Lv'+g.lv).join('、')}</p><p class="muted">云端序号${cloud.revision} · ${this.h(new Date(cloud.updatedAt).toLocaleString())}</p><div class="actions"><button id="adminDownload">下载云存档JSON</button></div>`:'<p>此玩家尚未建立云存档。</p>'}`);
+  this.bind('adminDownload',()=>this.download(cloud.raw,'SQ开的餐厅-玩家云存档.json'));
+ },
+ grantForm(player=null){
+  if(this.op){this.confirmOperation();return;}
+  const tools=[['speed','加速卡'],['bomb','炸弹'],['tempSlot','临时格'],['mergeAll','一键合并'],['infinite','无限体力']];
+  this.modal('补发奖励',`<p>对象：<b>${this.h(player?player.name+'（'+player.email+'）':'当前全体已登录玩家')}</b></p><p class="muted">奖励进入待领取列表，不直接覆盖玩家进度。全体发放不包含未来注册的玩家。</p><label>奖励标题<input id="grantTitle" maxlength="80" value="餐厅补给"></label><div class="form-grid"><label>金币（0—1000000）<input type="number" id="grantGold" min="0" max="1000000" step="1" value="0"></label><label>体力（0—500）<input type="number" id="grantStamina" min="0" max="500" step="1" value="0"></label>${tools.map(([id,name])=>`<label>${name}（0—100）<input type="number" id="grant_${id}" min="0" max="100" step="1" value="0"></label>`).join('')}</div><div class="actions"><button id="grantTen">每种道具填入10个</button><button id="grantReview" class="primary">核对发放内容</button></div>`);
+  this.bind('grantTen',()=>{for(const [k]of tools)document.getElementById('grant_'+k).value=10;});
+  this.bind('grantReview',()=>{
+   const title=document.getElementById('grantTitle').value.trim(),gold=Number(document.getElementById('grantGold').value),stamina=Number(document.getElementById('grantStamina').value);
+   const values=Object.fromEntries(tools.map(([k])=>[k,Number(document.getElementById('grant_'+k).value)]));
+   if(!title||!Number.isInteger(gold)||gold<0||gold>1000000||!Number.isInteger(stamina)||stamina<0||stamina>500||Object.values(values).some(n=>!Number.isInteger(n)||n<0||n>100))throw Error('请填写有效的整数数量和标题');
+   if(!gold&&!stamina&&!Object.values(values).some(Boolean))throw Error('至少填写一种奖励');
+   const summary=[gold?gold+'金币':'',stamina?stamina+'体力':'',...tools.filter(([k])=>values[k]).map(([k,n])=>n+'×'+values[k])].filter(Boolean).join('、');
+   this.prepare('sq_admin_grant',{p_request_id:SQCloudAPI.id(),p_target_id:player?.id||null,p_title:title,p_gold:gold,p_stamina:stamina,p_tools:values},'给'+(player?player.name:'当前全体已登录玩家')+'发放「'+title+'」：'+summary);
+  });
+ },
+ banForm(player){
+  if(this.op){this.confirmOperation();return;}
+  this.modal(player.banned?'解除封禁':'封禁玩家',`<p>对象：<b>${this.h(player.name)}</b><br>${this.h(player.email)}</p><p class="muted">封禁后该账号不能访问或保存云存档；游客模式独立运行。不会删除玩家进度。</p>${!player.banned?'<label>封禁原因<textarea id="banReason" maxlength="200" rows="3"></textarea></label>':''}<div class="actions"><button id="banReview" class="primary">核对并继续</button></div>`);
+  this.bind('banReview',()=>this.prepare('sq_admin_ban',{p_user_id:player.id,p_banned:!player.banned,p_reason:document.getElementById('banReason')?.value||'',p_request_id:SQCloudAPI.id()},(player.banned?'解除封禁：':'封禁：')+player.name));
+ },
+ prepare(endpoint,args,summary){this.op={actor:this.player.id,endpoint,args,summary,sent:false};this.confirmOperation();},
+ confirmOperation(){
+  this.modal(this.op.sent?'确认上次操作结果':'确认管理操作',`<p>${this.h(this.op.summary)}</p><p class="notice">${this.op.sent?'上次请求尚未确认；重试会使用同一操作编号。':'请确认对象与数量，提交后会记录管理日志。'}</p><small>操作编号：${this.h(this.op.args.p_request_id)}</small><div class="actions"><button id="adminExecute" class="primary">${this.op.sent?'重试并确认结果':'确认提交'}</button>${!this.op.sent?'<button id="adminCancel">取消</button>':''}</div>`);
+  this.bind('adminCancel',()=>{this.op=null;this.close();});this.bind('adminExecute',()=>this.execute());
+ },
+ async execute(){
+  const operation=this.op;operation.sent=true;const key='sq.restaurant.admin.pending:'+operation.actor;try{localStorage.setItem(key,JSON.stringify(operation));}catch(e){}
+  try{
+   const result=await this.api.rpc(operation.endpoint,operation.args);if(this.op?.args.p_request_id===operation.args.p_request_id)this.op=null;
+   try{const stored=JSON.parse(localStorage.getItem(key)||'null');if(stored?.args.p_request_id===operation.args.p_request_id)localStorage.removeItem(key);}catch(e){}
+   if(this.player?.id!==operation.actor)return;
+   this.close();await this.list();this.set('adminError',result.recipients!==undefined?'已发放给'+result.recipients+'位玩家，等待各自领取。':'操作已完成。');
+  }catch(e){if(this.player?.id===operation.actor&&this.op)this.confirmOperation();throw e;}
+ },
+ async audit(){
+  const actor=this.player?.id,rows=await this.api.rpc('sq_admin_audit',{p_limit:50}),names={grant:'发放奖励',ban:'封禁',unban:'解除封禁',view_progress:'查看进度'};if(this.player?.id!==actor)return;
+  this.modal('最近管理记录',rows.map(r=>`<article class="audit"><b>${this.h(names[r.action]||r.action)}</b><small> · ${this.h(new Date(r.createdAt).toLocaleString())}</small><div class="muted">操作者：${this.h(r.actorId)}<br>对象：${this.h(r.targetId||'全体玩家')}</div><div>${this.h(JSON.stringify(r.detail))}</div></article>`).join('')||'<p>暂无记录。</p>');
+ }
+};
+SQAdmin.init().catch(e=>SQAdmin.set('adminError',SQCloudAPI.message(e)));
+
+</script></body></html>
