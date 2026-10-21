@@ -49,10 +49,10 @@ end $%s$;
 commit;
 """ % (tag, email, tag)
 (root / '02-set-admin.sql').write_text(sql)
-release = root.parent / 'SQ开的餐厅-v1.2.0.html'
-if root.name == 'SQ开的餐厅-v1.2.0-账号管理' and release.exists():
+release = root.parent / 'SQ开的餐厅-v1.2.1.html'
+if root.name == 'SQ开的餐厅-v1.2.1-账号管理' and release.exists():
     release.write_bytes((root / 'index.html').read_bytes())
-manifest_path = root.parent / '.session/v120_release_manifest.json'
+manifest_path = root.parent / '.session/v121_release_manifest.json'
 if manifest_path.exists():
     manifest = json.loads(manifest_path.read_text())
     manifest.update({'configured': True, 'sha256': hashlib.sha256((root / 'index.html').read_bytes()).hexdigest(), 'adminSha256': hashlib.sha256((root / 'admin.html').read_bytes()).hexdigest()})

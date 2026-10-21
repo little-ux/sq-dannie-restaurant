@@ -24,24 +24,35 @@ window.SQCloudAPI=class SQCloudAPI{
   return this.session;
  }
  clearSession(){const owner=this.session?.user.id||this.memory?.user.id;this.session=null;this.memory=null;try{const stored=JSON.parse(localStorage.getItem(this.storageKey)||'null');if(!stored||stored.user?.id===owner)localStorage.removeItem(this.storageKey);}catch(e){}}
- async request(path,{method='POST',body,token,timeout=25000}={}){
+ async request(path,{method='POST',body,token,timeout=30000,retries=0}={}){
   if(!this.enabled)throw Error('账号服务尚未配置');
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
-  try{
-   const headers={'apikey':this.key,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
-   const response=await fetch(this.url+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal,credentials:'omit',cache:'no-store'});
-   const text=await response.text();let data=null;try{data=text?JSON.parse(text):null;}catch(e){throw Error('账号服务返回了无法识别的内容');}
-   if(!response.ok){
-    const error=Error(data?.message||data?.msg||data?.error_description||'账号请求失败');error.status=response.status;error.code=data?.code||data?.error_code||'';error.detail=data?.details||'';throw error;
-   }
-   return data;
-  }catch(e){if(e.name==='AbortError')throw Error('连接超时，本机进度仍保留');throw e;}finally{clearTimeout(timer);}
+  const encoded=body===undefined?undefined:JSON.stringify(body);
+  for(let attempt=0;;attempt++){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+   try{
+    const headers={'apikey':this.key,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
+    const response=await fetch(this.url+path,{method,headers,body:encoded,signal:controller.signal,credentials:'omit',cache:'no-store',keepalive:path.endsWith('/sq_commit')&&new Blob([encoded||'']).size<55000});
+    const text=await response.text();let data=null;
+    try{data=text?JSON.parse(text):null;}catch(e){const error=Error('账号服务暂时没有返回有效内容，请稍后重试');error.status=response.status;error.transient=response.status>=500;throw error;}
+    if(!response.ok){
+     const error=Error(data?.message||data?.msg||data?.error_description||'账号请求失败');error.status=response.status;error.code=data?.code||data?.error_code||'';error.detail=data?.details||'';
+     const retry=response.headers.get('Retry-After');error.retryAfter=Math.min(3600,Math.max(0,Number(retry)||Math.ceil((Date.parse(retry)-Date.now())/1000)||0));
+     error.transient=[408,425,500,502,503,504].includes(response.status);throw error;
+    }
+    return data;
+   }catch(original){
+    const e=original.name==='AbortError'?Object.assign(Error('连接超时，本机进度仍保留'),{transient:true,code:'NETWORK_TIMEOUT'}):original;
+    if(e instanceof TypeError||e.name==='NetworkError')e.transient=true;
+    if(attempt<retries&&e.transient&&navigator.onLine!==false){await new Promise(resolve=>setTimeout(resolve,600+Math.random()*300));continue;}
+    throw e;
+   }finally{clearTimeout(timer);}
+  }
  }
  async refresh(force=false){
   if(this.refreshing)return this.refreshing;
   const work=async()=>{
    if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
-   const saved=this.readSession();if(!force&&saved&&saved.user.id===this.session.user.id&&saved.expires_at>this.session.expires_at)this.session=saved;
+   const saved=this.readSession();if(saved&&saved.user.id===this.session.user.id&&(saved.expires_at>this.session.expires_at||saved.refresh_token!==this.session.refresh_token)){this.session=saved;force=false;}
    if(!force&&this.session?.expires_at>Date.now()/1000+60)return this.session;
    if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
    try{const result=await this.request('/auth/v1/token?grant_type=refresh_token',{body:{refresh_token:this.session.refresh_token}});return this.storeSession(result,this.readSession()?.user.id===result.user.id);}
@@ -54,8 +65,8 @@ window.SQCloudAPI=class SQCloudAPI{
   const actor=this.session?.user.id;
   try{
    await this.refresh();if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');
-   try{return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}
-   catch(e){if(e.status===401&&this.session?.refresh_token){await this.refresh(true);if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}throw e;}
+   try{return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token,timeout:12000,retries:['sq_bootstrap','sq_open','sq_heartbeat','sq_commit','sq_inbox','sq_history','sq_admin_list','sq_admin_audit'].includes(name)?1:0});}
+   catch(e){if(e.status===401&&this.session?.refresh_token){await this.refresh(true);if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token,timeout:12000,retries:['sq_bootstrap','sq_open','sq_heartbeat','sq_commit','sq_inbox','sq_history','sq_admin_list','sq_admin_audit'].includes(name)?1:0});}throw e;}
   }catch(e){e.accountId=actor;throw e;}
  }
  async signIn(email,password){
@@ -94,6 +105,12 @@ window.SQCloudAPI=class SQCloudAPI{
  static id(){if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((n,i)=>([4,6,8,10].includes(i)?'-':'')+n.toString(16).padStart(2,'0')).join('');}
  static message(e){
   const code=e?.message||String(e),messages={ACCOUNT_BANNED:'账号已被停用'+(e.detail?'：'+e.detail:''),ADMIN_REQUIRED:'此账号没有管理权限',AUTH_REQUIRED:'请重新登录',SESSION_MOVED:'另一设备正在经营，已暂停同步',CLOUD_CONFLICT:'云端进度已更新，请核对后继续',REQUEST_REUSED:'操作编号发生冲突，请重新操作',REWARD_NOT_AVAILABLE:'奖励已领取或不属于当前账号',REWARD_STATE_CHANGED:'进度已变化，请重试领取',REWARD_AMOUNT_INVALID:'奖励数量校验未通过',SAVE_SIZE_INVALID:'存档超过云端8MB限制，请先导出本机备份',invalid_credentials:'邮箱或密码不正确'};
+  if(e?.status===429)return '请求较频繁，请'+(e.retryAfter?e.retryAfter+'秒后':'稍后')+'再试；已收到的验证码仍可填写';
+  if(e?.code==='email_not_confirmed'||/email not confirmed/i.test(code))return '邮箱尚未验证，请填写邮件验证码';
+  if(e?.code==='email_address_invalid'||/invalid.*email|email.*invalid/i.test(code))return '请填写有效的邮箱地址';
+  if(e?.code==='over_email_send_rate_limit')return '邮件发送过于频繁，请稍后重新发送';
+  if(e?.code==='over_request_rate_limit')return '操作较频繁，请稍后重试';
+  if(e?.transient&&e.code!=='NETWORK_TIMEOUT')return '网络暂时不稳定，本机进度仍保留，请稍后重试';
   return messages[code]||(/invalid login credentials/i.test(code)?'邮箱或密码不正确':code);
  }
 };
