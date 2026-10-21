@@ -575,7 +575,6 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .compact-tabs button{flex:1;min-width:0;border:1px solid var(--line);padding:6px 5px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:11px;white-space:nowrap;cursor:pointer;}
 .compact-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 .compact-select{min-width:0;max-width:100%;padding:7px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font-size:12px;}
-#advancedRecipe{width:100%;margin:4px 0 8px;}
 .cook-label,.dex-series-label{font-size:11px;color:var(--muted);}
 .dex-series-label{display:flex;align-items:center;gap:7px;margin:5px 0;}
 .dex-series-label[hidden]{display:none;}
@@ -635,7 +634,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .modal-head{gap:8px;top:-13px;margin-bottom:9px;padding:8px 0;}
 .modal-head h3{min-width:0;overflow-wrap:anywhere;}
 .modal-head .modal-x{flex-shrink:0;}
-#foodPathBody,#dexBody,#dexResults,#advancedBody,.compact-dex-grid{min-width:0;max-width:100%;}
+#foodPathBody,#dexBody,#dexResults,.compact-dex-grid{min-width:0;max-width:100%;}
 .path-summary{gap:9px;padding:9px;border-radius:9px;}
 .path-summary>.food-icon{width:39px;height:39px;flex:none;}
 .path-summary>div{min-width:0;flex:1;}
@@ -1299,12 +1298,6 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <div class="modal-head"><h3 id="upgradeTitle">⬆发射器升级</h3><button class="modal-x" onclick="closeModal('upgradeModal')" aria-label="关闭升级">✕</button></div>
   <div id="upgradeBody"></div>
 </div>
-<div class="modal" id="advancedModal" role="dialog" aria-modal="true" aria-labelledby="advancedTitle" style="display:none;">
-  <div class="modal-head"><h3 id="advancedTitle">🍳进阶厨房</h3><button class="modal-x" onclick="closeModal('advancedModal')" aria-label="关闭进阶厨房">✕</button></div>
-  <div id="advancedNavigation" class="section-nav"></div><label class="section-label" for="cookingType">菜谱类型</label><select class="compact-select" id="cookingType" onchange="setCookingTab(Number(this.value))"><option value="3">三食材</option><option value="4">四食材</option></select>
-  <label class="cook-label" for="advancedRecipe">选择菜谱</label><select class="compact-select" id="advancedRecipe" onchange="selectAdvanced(Number(this.value))"></select>
-  <div id="advancedBody"></div>
-</div>
 <div class="modal" id="shopModal" role="dialog" aria-modal="true" aria-labelledby="shopTitle" style="display:none;">
   <div class="modal-head"><h3 id="shopTitle">小馆商店</h3><button class="modal-x" onclick="closeModal('shopModal')" aria-label="关闭商店">✕</button></div>
   <div class="shop-wallet"><span>可用金币</span><strong id="shopGold">100</strong><small>按需添置，慢慢经营</small></div>
@@ -1341,7 +1334,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <div class="account-entry"><span id="sqAccountStatus" class="account-status">游客 · 本机存档</span><button id="sqAccountEntry" onclick="SQAccounts.open()">登录／注册</button></div>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.1</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.2</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1430,7 +1423,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.2.1';
+const GAME_VERSION = '1.2.2';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -1871,11 +1864,23 @@ function foodIcon(id, lv=1){
     return R(21,6,22,10,3,'#7bb5bb')+R(17,15,30,43,8,'#dff4fa','#709ba6')+R(18,32,28,16,1,color,'none')+L(22,22,22,29,'#fff',3);
   };
   let art='';
-  if(id>=200&&advancedByOut[id]){
-    const r=advancedByOut[id],positions=r.parts.length===3?[[20,16],[6,33],[34,33]]:[[7,15],[34,15],[7,35],[34,35]];
-    art=E(32,35,30,27,'#f3e6ce','#98754d')+E(32,35,27,24,'#fff8e9','#ddc9aa');
-    r.parts.forEach((p,i)=>{const [x,y]=positions[i];const icon=foodIcon(p[0],recipeInputLevel(p,lv,r)).replace('class="food-icon"','').replace('<svg ',`<svg x="${x}" y="${y}" width="24" height="24" `);art+=icon;});
-    art+=Array.from({length:lv},(_,i)=>C(8+i*4.3,58,1.3,['#5f8e58','#c78254','#cd9b47'][i%3])).join('');
+  if(id>=200&&id<300&&CRAFTED_DISH_MAP[id]){
+    const d=CRAFTED_DISH_MAP[id],form=d.form;
+    if(form==='sandwich')art=plate()+P('M8 40L31 13L55 40Z','#ebc480')+P('M9 40L32 48L54 40L32 31Z','#e9b85c')+P('M10 34L31 27L53 34L31 42Z','#79a858')+P('M8 29L31 10L55 29L32 37Z','#f6dfaa')+L(18,26,32,15,'#fff4d1',3);
+    if(form==='rice')art=plate()+P('M11 43L26 15Q32 7 38 15L55 43Q57 49 48 51H17Q7 50 11 43Z','#fff2d8')+P('M24 37H41V54H24Z','#547761')+bacon(17,31,.38,-25,true)+mushroom(43,30,.35)+C(30,22,3,'#e8b85d');
+    if(form==='noodles')art=bowl('#f4e3c9')+[0,1,2,3].map(i=>P('M'+(15+i*7)+' 29q-5 8 0 12q6 5 8-3','none','#f5ca70',3)).join('')+beef(34,29,.39,true)+P('M16 31L46 35M19 25L42 29','none','#cb6b4f',3)+cheese(43,37,.25)+steam();
+    if(form==='soup')art=bowl('#d8e9e4')+E(32,34,23,6,'#e9c599')+mushroom(21,31,.35)+P('M36 30q-3-11 7-10q10 4 2 11q-6 3-6-3','none','#e99b7f',5)+onion(42,38,.2,true)+leafBits()+steam();
+    if(form==='bagel')art=plate()+E(32,31,23,19,'#d6a45b','#926339')+E(32,28,20,15,'#f1cc80')+E(32,29,8,6,'#fff1d3','#c18b48')+P('M12 33Q33 44 52 32L50 40Q32 51 14 40Z','#f3e9c9')+C(17,25,5,'#cf6874')+C(43,22,4,'#9d82a9')+C(43,36,4,'#d99970')+L(22,16,25,21,'#fff2c2',2);
+    if(form==='wrap')art=plate()+P('M11 19L46 14L54 44L23 55L8 34Z','#edcf91')+P('M12 23L45 18L48 31L20 41Z','#79a267')+bacon(30,27,.45,65,true)+beef(36,35,.36,true)+onion(22,29,.28,true)+P('M10 30L34 44L52 34L49 48L24 56Z','#f7dfac')+L(19,37,31,45,'#fff5d2',2);
+    if(form==='patty')art=plate()+E(32,35,23,15,'#86513c','#603c2d')+E(32,29,23,13,'#b57a53','#6c4832')+bacon(23,29,.5,80,true)+bacon(40,29,.45,80,true)+grillMarks()+leafBits();
+    if(form==='burger')art=plate()+P('M10 24Q13 6 32 7Q52 6 55 24Z','#e4b46b')+E(32,25,23,5,'#f4d48c')+P('M9 30Q18 25 25 31Q35 23 54 29L52 35H11Z','#7aab5c')+R(10,34,44,8,4,'#8b553e')+P('M10 33H54L43 42L32 36L21 42Z','#f2c752')+R(11,44,42,6,3,'#8a543b')+P('M9 49H55Q52 59 32 57Q12 59 9 49Z','#dfac61')+L(22,15,25,13,'#fff2c5',2)+L(34,13,37,15,'#fff2c5',2)+L(44,18,47,16,'#fff2c5',2);
+    if(form==='gratin')art=P('M5 32H59L54 53Q33 62 10 53Z','#c3d6d0')+E(32,32,27,12,'#e8ba62','#ad7a42')+P('M10 30Q32 21 53 31','none','#f3d891',4)+beef(24,31,.32,true)+mushroom(39,30,.29)+P('M42 38q0-12 9-7q5 6-3 9','none','#dc9274',4)+C(18,39,2,'#72965f')+steam();
+    if(form==='salad')art=bowl('#e8dfc7')+leaf(19,27,.5)+leaf(39,23,.55)+leaf(47,36,.4)+tomato(18,35,.45,true)+mushroom(33,32,.36)+onion(42,37,.3,true)+L(18,21,29,26,'#f5e7b1',2)+C(28,37,2,'#e5b862');
+    if(form==='crepe')art=plate()+P('M8 46L30 11L56 45Z','#dca45c')+P('M14 42L32 19L48 43Z','#f6cf82')+P('M18 39L32 26L43 41Z','#f4e5b2')+bacon(28,33,.34,60,true)+E(38,34,6,5,'#fff5d9')+C(38,34,3,'#e8ad42')+P('M15 49L32 34L52 49Z','#ecc177')+P('M20 47L43 48','none','#b77c45',2)+steam();
+    if(form==='cake')art=plate()+P('M13 20L44 13L53 23L21 31Z','#f7dfbb')+P('M13 20L21 31V53L13 42Z','#d5b084')+P('M21 31L53 23V46L21 53Z','#f1d4b2')+[33,40,47].map(y=>P('M21 '+y+'L53 '+(y-8),'none','#fff1d9',3)).join('')+C(27,21,5,'#d37b87')+C(40,18,4,'#a88bae')+C(44,27,3,'#d9ad62')+leaf(33,16,.2);
+    if(form==='risotto')art=E(32,42,29,15,'#cfdecf','#8da68f')+E(32,38,25,11,'#f3d7a1')+Array.from({length:11},(_,i)=>E(14+(i*13)%35,32+(i*7)%13,3,1.3,'#fff0c9')).join('')+beef(26,32,.37,true)+P('M39 31q-3-11 7-9q10 6 0 13q-7 2-6-4','none','#e39473',5)+tomato(16,38,.24,true)+leafBits()+steam();
+    art+=C(51,12,9,d.color,'#fff4dc')+'<text x="51" y="15.5" fill="#fffaf0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9">'+d.mark+'</text>';
+    art+=Array.from({length:lv},(_,i)=>C(8+i*4.3,61,1.1,d.color)).join('');
   } else if(id>=100){
     // Existing dishes retain their recognizable food emoji, with a unique plate,
     // garnish and serving arrangement for each dish/level.
@@ -2151,31 +2156,31 @@ const recipes = [
   {a:[12,2], b:[1,2], out:142},
   {a:[12,2], b:[9,2], out:143},
 ];
-const recipeByOut = {};
-recipes.forEach(r=>{ recipeByOut[r.out] = r; });
-const advancedRecipes=[
-  {out:200,name:'田园芝士三明治',parts:[[1,3],[4,3],[6,3]],minLv:11},
-  {out:201,name:'培根菌菇焗蛋',parts:[[2,3],[7,3],[9,3]],minLv:17},
-  {out:202,name:'番茄芝士牛肉煲',parts:[[3,3],[5,3],[6,3]],minLv:11},
-  {out:203,name:'菌菇海鲜浓汤',parts:[[7,3],[8,3],[10,3]],minLv:20},
-  {out:204,name:'鲜果芝士吐司',parts:[[1,3],[6,3],[11,3]],minLv:23},
-  {out:205,name:'洋葱培根牛肉卷',parts:[[5,3],[8,3],[9,3]],minLv:17},
-  {out:220,name:'主厨四重牛肉堡',parts:[[1,4],[5,4],[6,4],[9,4]],minLv:18},
-  {out:221,name:'海陆芝士盛宴',parts:[[5,4],[6,4],[7,4],[10,4]],minLv:20},
-  {out:222,name:'田园四鲜沙拉',parts:[[3,4],[4,4],[7,4],[8,4]],minLv:18},
-  {out:223,name:'晨光四味早餐',parts:[[1,4],[2,4],[9,4],[12,4]],minLv:26},
-  {out:224,name:'热带奶香甜品塔',parts:[[1,4],[6,4],[11,4],[12,4]],minLv:26},
-  {out:225,name:'番茄海鲜烩牛肉',parts:[[3,4],[5,4],[8,4],[10,4]],minLv:20}
-];
-const advancedByOut={};
-advancedRecipes.forEach(r=>{advancedByOut[r.out]=r;recipeByOut[r.out]=r;dishes[r.out]={id:r.out,name:r.name,emoji:'🍽️',minLv:r.minLv};});
-const allRecipes=[...recipes,...advancedRecipes];
+const CRAFTED_DISHES=[{"id":200,"name":"田园芝士三明治","a":[118,3],"b":[4,3],"minLv":11,"form":"sandwich","color":"#75996b","mark":"田"},{"id":201,"name":"菌菇培根蛋饭团","a":[104,3],"b":[7,3],"minLv":17,"form":"rice","color":"#a58061","mark":"菌"},{"id":202,"name":"芝士番茄牛肉面","a":[107,3],"b":[6,3],"minLv":11,"form":"noodles","color":"#cf7957","mark":"酪"},{"id":203,"name":"菌香海鲜烩汤","a":[121,3],"b":[8,3],"minLv":20,"form":"soup","color":"#6faaa3","mark":"鲜"},{"id":204,"name":"鲜果芝士贝果","a":[118,3],"b":[11,3],"minLv":23,"form":"bagel","color":"#c38a9e","mark":"果"},{"id":205,"name":"培根洋葱牛肉卷","a":[206,3],"b":[8,3],"minLv":17,"form":"wrap","color":"#b87a58","mark":"卷"},{"id":206,"name":"培根牛肉饼","a":[5,3],"b":[9,3],"minLv":17,"form":"patty","color":"#ab6b50","mark":"煎"},{"id":220,"name":"双层培根芝士堡","a":[206,4],"b":[118,4],"minLv":18,"form":"burger","color":"#c69549","mark":"堡"},{"id":221,"name":"海陆菌菇焗饭","a":[110,4],"b":[120,4],"minLv":20,"form":"gratin","color":"#be985e","mark":"焗"},{"id":222,"name":"烤菇暖蔬沙拉","a":[105,4],"b":[114,4],"minLv":18,"form":"salad","color":"#719667","mark":"蔬"},{"id":223,"name":"咖香培根蛋可丽饼","a":[115,4],"b":[12,4],"minLv":26,"form":"crepe","color":"#ac8762","mark":"饼"},{"id":224,"name":"鲜果奶酪千层","a":[204,4],"b":[12,4],"minLv":26,"form":"cake","color":"#b78ca6","mark":"甜"},{"id":225,"name":"海鲜牛腩烩饭","a":[113,4],"b":[10,4],"minLv":20,"form":"risotto","color":"#bd775e","mark":"烩"}];
+const CRAFTED_DISH_MAP=Object.fromEntries(CRAFTED_DISHES.map(d=>[d.id,d]));
+CRAFTED_DISHES.forEach(d=>{
+ dishes[d.id]={id:d.id,name:d.name,emoji:'🍽️',minLv:d.minLv};
+ recipes.push({a:[...d.a],b:[...d.b],out:d.id,minLv:d.minLv});
+});
+const recipeByOut={};
+recipes.forEach(r=>{recipeByOut[r.out]=r;});
+const allRecipes=[...recipes];
 LIFE_DISHES.forEach(d=>{
   const recipe={a:[...d.a],b:[...d.b],out:d.id,minLv:d.minLv,customer:d.customer||null};
   dishes[d.id]={id:d.id,name:d.name,emoji:'🍽️',minLv:d.minLv};
   recipes.push(recipe);allRecipes.push(recipe);recipeByOut[d.id]=recipe;
 });
-function recipeParts(r){return r.parts||[r.a,r.b];}
+function recipeParts(r){return [r.a,r.b];}
+function recipeIngredientCount(id,seen=new Set()){
+ if(id<100)return 1;const r=recipeByOut[id];if(!r||seen.has(id))return 0;
+ const next=new Set(seen);next.add(id);return recipeParts(r).reduce((sum,p)=>sum+recipeIngredientCount(p[0],next),0);
+}
+function isCompositeRecipe(r){return recipeIngredientCount(r.out)>=3;}
+function noteCompositeCook(r){
+ const count=recipeIngredientCount(r.out);if(count<3)return;
+ stats.advancedCooks++;if(count===3)stats.tripleCooks++;else stats.quadCooks++;
+}
+
 
 
 // 带系别徽章的需求标签（订单/提示/菜谱用）
@@ -3216,10 +3221,10 @@ ACH_DEF.push(
   {id:'forms36',name:'风味笔记',desc:'发现36种基础食材形态',gold:45},
   {id:'forms72',name:'半本百科',desc:'发现72种基础食材形态',gold:80},
   {id:'forms144',name:'风味全书',desc:'发现全部144种基础食材形态',gold:180},
-  {id:'advanced1',name:'灵感开锅',desc:'完成首次三食材或四食材合成',gold:40},
-  {id:'advanced5',name:'私房菜单',desc:'累计完成5次进阶合成',gold:70},
-  {id:'triple5',name:'三味和鸣',desc:'累计完成5次三食材合成',gold:70},
-  {id:'quad5',name:'四重奏',desc:'累计完成5次四食材合成',gold:100},
+  {id:'advanced1',name:'灵感开锅',desc:'完成首次复合菜制作',gold:40},
+  {id:'advanced5',name:'私房菜单',desc:'累计制作5道复合菜',gold:70},
+  {id:'triple5',name:'三味和鸣',desc:'累计制作5道三味复合菜',gold:70},
+  {id:'quad5',name:'四重奏',desc:'累计制作5道四味复合菜',gold:100},
   {id:'generator3',name:'灶台升级',desc:'任一发射器达到Lv3',gold:30},
   {id:'generator6',name:'精工厨房',desc:'任一发射器达到Lv6',gold:70},
   {id:'generator12',name:'顶级灶台',desc:'任一发射器达到Lv12',gold:180},
@@ -3395,7 +3400,7 @@ function normalizeState(raw){
   const now=Date.now();n.lastStaminaAt=Number.isFinite(d.lastStaminaAt)?Math.max(0,Math.min(now,d.lastStaminaAt)):now;
   const dm=d.meta||{};n.meta={combo:integer(dm.combo,0,0,5),lastDeliveryAt:integer(dm.lastDeliveryAt,0,0,now),lastEventDeliver:integer(dm.lastEventDeliver,0,0,n.stats.deliver)};
   n.daily=normalizeDaily(d.daily);n.calendarFloor=[d.calendarFloor,n.daily.day].filter(validCalendarDay).sort().pop()||'';
-  n.orders=(Array.isArray(d.orders)?d.orders:[]).slice(0,3).filter(o=>o&&Array.isArray(o.req)&&o.req.length>=1&&o.req.length<=3&&o.req.every(r=>r&&Number.isInteger(r.id)&&itemInfo(r.id)&&Number.isInteger(r.lv)&&r.lv>=1&&r.lv<=MAX_LV)).map(o=>makeOrder(o.req.map(r=>({id:r.id,lv:r.lv})),{high:!!o.high,complex:!!o.complex,dish:!!o.dish,done:!!o.done,restored:true,roster:n.regularRoster,surprise:o.surprise,uid:o.uid,customerId:o.customerId,signatureSpecial:o.signatureSpecial}));
+  n.orders=(Array.isArray(d.orders)?d.orders:[]).slice(0,3).filter(o=>o&&Array.isArray(o.req)&&o.req.length>=1&&o.req.length<=3&&o.req.every(r=>r&&Number.isInteger(r.id)&&itemInfo(r.id)&&Number.isInteger(r.lv)&&r.lv>=1&&r.lv<=MAX_LV)).map(o=>makeOrder(o.req.map(r=>({id:r.id,lv:r.lv})),{high:!!o.high,complex:!!o.complex,dish:!!o.dish,done:!!o.done,restored:true,rw:o.rw,exp:o.exp,roster:n.regularRoster,surprise:o.surprise,uid:o.uid,customerId:o.customerId,signatureSpecial:o.signatureSpecial}));
   const orderIds=new Set();n.orders.forEach(o=>{if(orderIds.has(o.uid))o.uid=newOrderUid();orderIds.add(o.uid);});
   if(raw.schemaVersion>=2&&(!d.restaurant||typeof d.restaurant!=='object'))throw new Error('存档缺少餐厅经营数据，请选择完整的存档文件。');
   n.restaurant=normalizeRestaurant(d.restaurant,n);
@@ -3788,8 +3793,10 @@ function grantOrderSurprise(order){
 }
 function makeOrder(req,flags={}){
   const baseReward=Math.max(1,Math.round(req.reduce((sum,r)=>sum+foodValue(r.id,r.lv),0)*(flags.high?1.12:flags.complex?1.04:flags.dish?1.08:1)));
-  const rw=Math.max(1,Math.round(baseReward*ORDER_GOLD_MULTIPLIER));
-  const exp=req.reduce((sum,r)=>sum+8+r.lv*3+(r.id>=100?4:0),0)+(flags.high?6:0);
+  const calculatedRw=Math.max(1,Math.round(baseReward*ORDER_GOLD_MULTIPLIER));
+  const rw=flags.restored&&Number.isSafeInteger(flags.rw)&&flags.rw>0&&flags.rw<=1000000?flags.rw:calculatedRw;
+  const calculatedExp=req.reduce((sum,r)=>sum+8+r.lv*3+(r.id>=100?4:0),0)+(flags.high?6:0);
+  const exp=flags.restored&&Number.isSafeInteger(flags.exp)&&flags.exp>=0&&flags.exp<=10000?flags.exp:calculatedExp;
   const surprise=flags.restored?normalizeOrderSurprise(flags.surprise):rollOrderSurprise();
   const uid=validOrderUid(flags.uid)?flags.uid:newOrderUid();
   const privateOwner=req.map(r=>LIFE_DISH_MAP[r.id]?.customer).find(Boolean);
@@ -4106,91 +4113,6 @@ function renderUpgrades(){
 }
 
 
-let activeAdvancedId=200,cookingTab=3,selectedCooking=[];
-function openAdvanced(id=0){
-  prepareKitchenPage('cooking');
-  if(advancedByOut[id]){activeAdvancedId=id;cookingTab=advancedByOut[id].parts.length;}
-  selectedCooking=[];closeModal('dexModal');closeModal('foodPathModal');
-  document.getElementById('advancedModal').style.display='block';drawAdvanced();
-}
-function setCookingTab(n){
- if(![3,4].includes(n))return;const first=advancedRecipes.find(r=>r.parts.length===n);if(!first)return;
- cookingTab=n;activeAdvancedId=first.out;selectedCooking=[];drawAdvanced();
-}
-function selectAdvanced(id){
- const recipe=advancedByOut[id];if(!recipe)return;activeAdvancedId=id;cookingTab=recipe.parts.length;selectedCooking=[];drawAdvanced();
-}
-function cookingChoices(part){
-  const r=advancedByOut[activeAdvancedId],minimum=Math.max(part[1],r?minimumFoodLevel(r.out):1);
-  return grid.map((it,i)=>({it,i})).filter(x=>x.it&&x.it.itemId===part[0]&&x.it.level>=minimum).sort((a,b)=>a.it.level-b.it.level||a.i-b.i);
-}
-function chooseCookingPart(partIndex,idx){
- const r=advancedByOut[activeAdvancedId];if(!r||!Number.isInteger(partIndex)||partIndex<0||partIndex>=r.parts.length||!Number.isInteger(idx))return;
- const p=r.parts[partIndex],it=grid[idx],minimum=minimumFoodLevel(r.out);
- if(!it||it.itemId!==p[0]||it.level<minimum){selectedCooking[partIndex]=-1;drawAdvanced();return;}
- let changed=false;
- selectedCooking=r.parts.map((part,i)=>{
-   if(i===partIndex)return idx;
-   const previous=selectedCooking[i],food=grid[previous];
-   if(previous!==idx&&food&&food.itemId===part[0]&&food.level===it.level&&food.level>=minimum)return previous;
-   if(Number.isInteger(previous)&&previous>=0)changed=true;
-   return -1;
- });
- drawAdvanced();if(changed)toast('已切换至L'+it.level+'材料，请补齐同等级食材','ok');
-}
-function cookingPlanAtLevel(r,level){
- if(!r||!Number.isInteger(level)||level<minimumFoodLevel(r.out)||level>MAX_LV)return null;
- const used=new Set(),indices=[];
- for(const part of r.parts){
-   const index=grid.findIndex((it,i)=>i<gridSize+tempAdd&&!used.has(i)&&it&&it.itemId===part[0]&&it.level===level&&level>=part[1]);
-   if(index<0)return null;used.add(index);indices.push(index);
- }
- return indices;
-}
-function autoCookingParts(){
- const r=advancedByOut[activeAdvancedId];if(!r)return;
- for(let level=minimumFoodLevel(r.out);level<=MAX_LV;level++){
-   const plan=cookingPlanAtLevel(r,level);
-   if(plan){selectedCooking=plan;drawAdvanced();return;}
- }
- selectedCooking=[];drawAdvanced();toast('棋盘上还没有配齐一组同等级材料','err');
-}
-function cookingReady(r){
- if(!r||cLv<r.minLv||selectedCooking.length!==r.parts.length||new Set(selectedCooking).size!==r.parts.length)return false;
- const level=grid[selectedCooking[0]]?.level;
- if(!Number.isInteger(level)||level<minimumFoodLevel(r.out)||level>MAX_LV)return false;
- return r.parts.every((p,i)=>{
-   const index=selectedCooking[i];if(!Number.isInteger(index)||index<0||index>=gridSize+tempAdd)return false;
-   const it=grid[index];return it&&it.itemId===p[0]&&it.level===level&&level>=p[1];
- });
-}
-function cookingLevel(r){return cookingReady(r)?grid[selectedCooking[0]].level:0;}
-
-function drawAdvanced(){
-  const r=advancedByOut[activeAdvancedId];
-  document.getElementById('cookingType').value=String(cookingTab);
-  const selector=document.getElementById('advancedRecipe');
-  selector.innerHTML=advancedRecipes.filter(x=>x.parts.length===cookingTab).map(x=>`<option value="${x.out}" ${x.out===r.out?'selected':''}>${x.name}${cLv<x.minLv?' · Lv'+x.minLv+'解锁':''}</option>`).join('');
-  let h=`<div class="cooking-title">${foodIcon(r.out,1)}<div><b>${r.name}</b><small>餐厅Lv${r.minLv} · ${r.parts.length}种材料一次合成</small></div></div><p class="path-note">在下方选择棋盘上已有的食物。自动配齐优先寻找等级最低的一整组同级材料；点击合成后才消耗。</p>`;
-  r.parts.forEach((p,i)=>{
-    const options=cookingChoices(p),current=selectedCooking[i];
-    h+=`<div class="cooking-part"><span>${foodIcon(p[0],p[1])}</span><label for="cookingPart${i}">${itemInfo(p[0]).name}<small>至少L${minimumFoodLevel(r.out)} · 同级</small></label><select id="cookingPart${i}" class="compact-select" onchange="chooseCookingPart(${i},Number(this.value))"><option value="-1">${options.length?'请选择材料':'棋盘材料不足'}</option>${options.map(x=>`<option value="${x.i}" ${x.i===current?'selected':''}>第${x.i+1}格 · L${x.it.level} ${evo(x.it.itemId,x.it.level).name}</option>`).join('')}</select></div>`;
-  });
-  const ready=cookingReady(r),locked=cLv<r.minLv;
-  h+=`<div class="cooking-output">${ready?foodIcon(r.out,cookingLevel(r)):foodIcon(r.out,1)}<span>${ready?'将获得 '+r.name+' L'+cookingLevel(r):locked?'餐厅Lv'+r.minLv+'解锁，当前Lv'+cLv:'配齐同等级材料后即可合成'}</span></div><div class="btn-row"><button class="btn-blue" onclick="autoCookingParts()" ${locked?'disabled':''}>自动配齐</button><button class="btn-green" onclick="cookAdvanced()" ${!ready?'disabled':''}>合成菜品</button></div><p class="path-note">所有材料必须同等级，合成后保持该等级。成品占用一格，其他材料格自动腾空；无需额外空格。</p>`;
-  document.getElementById('advancedBody').innerHTML=h;
-}
-function cookAdvanced(){
-  const r=advancedByOut[activeAdvancedId];
-  if(!cookingReady(r)){drawAdvanced();toast('请备齐满足配方要求的同等级食材','err');return;}
-  const lv=cookingLevel(r),dest=selectedCooking[0];
-  selectedCooking.forEach(i=>grid[i]=null);grid[dest]={itemId:r.out,level:lv};selectedCooking=[];selectedIdx=-1;
-  recordDex(r.out,lv);noteSignatureCook(r.out);stats.merge++;stats.advancedCooks++;stats[r.parts.length===3?'tripleCooks':'quadCooks']++;
-  noteMerge(1);noteDish();checkAch();sfx('merge');render();drawAdvanced();scheduleSave();popAnim(dest);
-  const title=document.getElementById('advancedTitle').getBoundingClientRect();emitEffect('merge',title.left+title.width/2,title.bottom+20,'新鲜出炉');
-  toast('完成 '+r.name+' L'+lv,'ok');
-}
-
 function openLevelPicker(idx){
   const g=gens[idx];if(!g||!g.unlocked)return;
   document.getElementById('levelTitle').textContent=itemInfo(g.itemId).name+' · 选择发射等级';
@@ -4330,7 +4252,7 @@ function onCellTap(idx){
       grid[selectedIdx] = null;
       sfx('merge'); popAnim(idx);
       recordDex(r.out, outLv);noteSignatureCook(r.out);
-      stats.merge++; noteMerge(1); noteDish();
+      stats.merge++; noteMerge(1); noteDish();noteCompositeCook(r);
       toast(`✨合成【${dishes[r.out].name} L${outLv}】`,'ok');
       checkAch();
     } else {
@@ -4461,7 +4383,7 @@ function craftPath(id,lv,quantity=1,seen=new Set(),expanded=true){
  const r=recipeByOut[id];if(!r||seen.has(id))return '<div class="path-note">暂无可用菜谱。</div>';
  const next=new Set(seen);next.add(id);const result=Math.max(lv,minimumFoodLevel(id)),parts=recipeParts(r).map(p=>[p[0],recipeInputLevel(p,result,r)]);
  let h=`<details class="path-node dish-path" ${expanded?'open':''}><summary>${dishes[id].name} L${result} × ${quantity}</summary>${recipeFlow(parts,id,result)}`;
- h+=`<div class="path-note">${r.parts?'餐厅Lv'+r.minLv+'后，在进阶烹饪备齐'+parts.length+'种材料。':'在棋盘上选择两种材料合成。'}材料必须同等级，成品保持该等级。${result>lv?'本配方最低产出L'+result+'，可直接交付较低等级订单。':''}</div>`;
+ h+=`<div class="path-note">${'在棋盘上选择两份材料合成。'+(r.minLv?'餐厅Lv'+r.minLv+'解锁。':'')}材料必须同等级，成品保持该等级。${result>lv?'本配方最低产出L'+result+'，可直接交付较低等级订单。':''}</div>`;
  h+='<p class="path-branch-caption">材料制作步骤 · 点击展开</p><div class="path-branches">'+parts.map(p=>craftPath(p[0],p[1],quantity,next,false)).join('')+'</div>';
  return h+'</details>';
 }
@@ -4606,13 +4528,13 @@ function openDex(keep=false){
   prepareKitchenPage('recipes');
   if(!keep)dexView={tab:'all',series:0,page:0,query:''};
   const body=document.getElementById('dexBody');
-  body.innerHTML=`<label class="section-label" for="dexCategory">菜谱分类</label><select class="compact-select" id="dexCategory" onchange="setDexTab(this.value)">${[['all','全部'],['forms','食材形态'],['classic','双食材'],['advanced','进阶菜品']].map(([id,name])=>`<option value="${id}">${name}</option>`).join('')}</select><div class="dex-search-row"><input class="dex-search" id="dexSearch" placeholder="搜索全部食材、菜名或配方材料" oninput="searchDex(this.value)"><button class="mini-action" id="clearDexSearch" onclick="clearDexSearch()" aria-label="清空检索关键词" hidden>清空</button></div><label class="dex-series-label" id="dexSeriesWrap">食材系别 <select class="compact-select" id="dexSeries" onchange="setDexSeries(Number(this.value))"><option value="0">全部</option>${items.map(it=>`<option value="${it.id}">${it.name}系</option>`).join('')}</select></label><div id="dexResults"></div><div class="compact-pager" id="dexPager"></div>`;
+  body.innerHTML=`<label class="section-label" for="dexCategory">菜谱分类</label><select class="compact-select" id="dexCategory" onchange="setDexTab(this.value)">${[['all','全部'],['forms','食材形态'],['classic','家常菜'],['composite','复合菜']].map(([id,name])=>`<option value="${id}">${name}</option>`).join('')}</select><div class="dex-search-row"><input class="dex-search" id="dexSearch" placeholder="搜索全部食材、菜名或配方材料" oninput="searchDex(this.value)"><button class="mini-action" id="clearDexSearch" onclick="clearDexSearch()" aria-label="清空检索关键词" hidden>清空</button></div><label class="dex-series-label" id="dexSeriesWrap">食材系别 <select class="compact-select" id="dexSeries" onchange="setDexSeries(Number(this.value))"><option value="0">全部</option>${items.map(it=>`<option value="${it.id}">${it.name}系</option>`).join('')}</select></label><div id="dexResults"></div><div class="compact-pager" id="dexPager"></div>`;
   document.getElementById('dexSearch').value=dexView.query;
   drawDex();document.getElementById('dexModal').style.display='block';
 }
 function resetDexSearchInput(){dexView.query='';const input=document.getElementById('dexSearch');if(input)input.value='';}
 function setDexTab(tab){
-  if(!['all','forms','classic','advanced'].includes(tab))return;
+  if(!['all','forms','classic','composite'].includes(tab))return;
   resetDexSearchInput();dexView.tab=tab;dexView.page=0;drawDex();
 }
 function setDexSeries(id){
@@ -4648,22 +4570,22 @@ function drawDex(){
     });
   }
   if(tab!=='forms'){
-    const rs=tab==='classic'?recipes:tab==='advanced'?advancedRecipes:allRecipes;
-    rs.filter(r=>(!r.customer||regularTier(r.customer)>=2)&&recipeUsesSeries(r.out,series)&&matches(dishKw(r.out,1))).forEach(r=>entries.push({kind:r.parts?'advanced':'classic',id:r.out,lv:dishesDex[r.out]||1,known:!!dishesDex[r.out],r}));
+    const rs=allRecipes.filter(r=>tab==='classic'?!isCompositeRecipe(r):tab==='composite'?isCompositeRecipe(r):true);
+    rs.filter(r=>(!r.customer||regularTier(r.customer)>=2)&&recipeUsesSeries(r.out,series)&&matches(dishKw(r.out,1))).forEach(r=>entries.push({kind:isCompositeRecipe(r)?'composite':'classic',id:r.out,lv:dishesDex[r.out]||1,known:!!dishesDex[r.out],r}));
   }
   const size=tab==='forms'?12:tab==='all'?10:8,pages=Math.max(1,Math.ceil(entries.length/size));v.page=Math.max(0,Math.min(v.page,pages-1));
   let h='';
   if(searching){
-    const forms=entries.filter(e=>e.kind==='forms').length,classic=entries.filter(e=>e.kind==='classic').length,advanced=entries.length-forms-classic;
-    h=`<p class="path-note">全局检索 · 共${entries.length}项：食材${forms} / 双食材${classic} / 进阶${advanced}。不限制分类和系别。</p>`;
+    const forms=entries.filter(e=>e.kind==='forms').length,classic=entries.filter(e=>e.kind==='classic').length,composite=entries.length-forms-classic;
+    h=`<p class="path-note">全局检索 · 共${entries.length}项：食材${forms} / 家常菜${classic} / 复合菜${composite}。不限制分类和系别。</p>`;
   }else if(tab==='all'||tab==='forms')h=`<p class="path-note">${series?itemInfo(series).name+'系':'全部系别'} · ${entries.length}项 · 已发现${discoveredFormCount()}/144种食材形态。输入关键词可检索全部分类。</p>`;
-  else h=`<p class="path-note">${entries.length}道菜 · 点击查看配方。输入关键词可同时检索食材、双食材和进阶菜品。</p>`;
+  else h=`<p class="path-note">${entries.length}道菜 · 点击查看配方。输入关键词可同时检索食材、家常菜和复合菜。</p>`;
   h+='<div class="compact-dex-grid">';
   entries.slice(v.page*size,(v.page+1)*size).forEach(e=>{
     if(e.kind==='forms')h+=`<button class="compact-dex-card ${e.known?'':'undiscovered'}" onclick="openDexPath(${e.id},${e.lv})">${e.info.emoji}<span><b>L${e.lv} ${e.info.name}</b><small>${itemInfo(e.id).name}系 · ${e.known?'已发现':'待制作'}</small></span></button>`;
     else{
       const r=e.r;
-      h+=`<button class="compact-dex-card ${e.known?'':'undiscovered'}" onclick="openDexPath(${e.id},1)">${foodIcon(e.id,e.lv)}<span><b>${dishes[e.id].name}</b><small>${r.parts?'进阶 · '+r.parts.length+'食材':'双食材'} · ${e.known?'最高L'+e.lv:'待发现'}${r.parts?' · Lv'+r.minLv:''}</small><span class="recipe-tags">${recipeParts(r).map(p=>`<span class="recipe-tag">${itemInfo(p[0]).name} L${recipeInputLevel(p,minimumFoodLevel(r.out),r)}</span>`).join('')}</span></span></button>`;
+      h+=`<button class="compact-dex-card ${e.known?'':'undiscovered'}" onclick="openDexPath(${e.id},1)">${foodIcon(e.id,e.lv)}<span><b>${dishes[e.id].name}</b><small>${isCompositeRecipe(r)?'复合 · '+recipeIngredientCount(r.out)+'味':'家常菜'} · ${e.known?'最高L'+e.lv:'待发现'}${r.minLv?' · Lv'+r.minLv:''}</small><span class="recipe-tags">${recipeParts(r).map(p=>`<span class="recipe-tag">${itemInfo(p[0]).name} L${recipeInputLevel(p,minimumFoodLevel(r.out),r)}</span>`).join('')}</span></span></button>`;
     }
   });
   h+='</div>';if(!entries.length)h+='<p class="path-note">没有匹配结果，可尝试食材系别或已知菜名。</p>';
@@ -4917,9 +4839,9 @@ function refreshRewardNotices(){
   ensureDaily();setRewardLabel('challengeButton','📅餐厅日常',pendingAttendanceRewards()+pendingTaskRewards());setRewardLabel('kitchenButton','📖厨房菜谱',pendingPuzzleRewards());setRewardLabel('businessButton','♥熟客与经营',pendingFriendRewards());
 }
 
-const KITCHEN_SECTIONS=[['recipes','菜谱图鉴'],['cooking','进阶烹饪'],['puzzles','厨艺残局']];
+const KITCHEN_SECTIONS=[['recipes','菜谱图鉴'],['puzzles','厨艺残局']];
 const BUSINESS_SECTIONS=LIFE_TABS.filter(([id])=>id!=='puzzles');
-function hideWorkspaceModals(){closeInlineMenus();['dexModal','advancedModal','businessModal'].forEach(id=>document.getElementById(id).style.display='none');}
+function hideWorkspaceModals(){closeInlineMenus();['dexModal','businessModal'].forEach(id=>document.getElementById(id).style.display='none');}
 function workspaceOptions(kind,current){
   const entries=kind==='kitchen'?KITCHEN_SECTIONS:BUSINESS_SECTIONS;
   return entries.map(([id,name])=>{const count=id==='puzzles'?pendingPuzzleRewards():id==='customers'?pendingFriendRewards():0;return `<option value="${id}" ${id===current?'selected':''}>${markedLabel(name,count)}</option>`;}).join('');
@@ -4928,12 +4850,11 @@ function kitchenNavMarkup(current,id){return `<label class="section-label" for="
 function prepareKitchenPage(page){
   hideWorkspaceModals();
   if(page==='recipes')document.getElementById('dexNavigation').innerHTML=kitchenNavMarkup(page,'dexKitchenSelect');
-  if(page==='cooking')document.getElementById('advancedNavigation').innerHTML=kitchenNavMarkup(page,'advancedKitchenSelect');
-  requestAnimationFrame(()=>{const modal=document.getElementById(page==='recipes'?'dexModal':'advancedModal');if(modal.style.display==='block')modal.scrollTop=0;});
+  requestAnimationFrame(()=>{const modal=document.getElementById('dexModal');if(modal.style.display==='block')modal.scrollTop=0;});
 }
 function chooseKitchen(page){
   if(!KITCHEN_SECTIONS.some(([id])=>id===page))return;
-  if(page==='recipes')openDex();else if(page==='cooking')openAdvanced();else openRestaurant(page);
+  if(page==='recipes')openDex();else openRestaurant(page);
 }
 function switchWorkspaceSection(page){
   if(KITCHEN_SECTIONS.some(([id])=>id===page)){chooseKitchen(page);return;}
@@ -4991,7 +4912,7 @@ function refreshInlineSelects(){
           if(select.disabled||button.disabled)return;
           const changed=select.selectedIndex!==index,id=select.id;select.selectedIndex=index;record.menu.open=false;refreshInlineSelects();
           if(changed)select.dispatchEvent(new Event('change',{bubbles:true}));
-          requestAnimationFrame(()=>{refreshInlineSelects();const current=id?document.getElementById(id):select,updated=current&&inlineSelectRecords.get(current),modal=current?.closest('.modal');if(updated&&(!modal||modal.style.display==='block'))updated.summary.focus({preventScroll:true});});
+          requestAnimationFrame(()=>{refreshInlineSelects();const current=id?document.getElementById(id):select,updated=current&&inlineSelectRecords.get(current),modal=current?.closest('.modal');if(updated&&(!modal||modal.style.display==='block')&&(document.activeElement===document.body||record.wrap.contains(document.activeElement)))updated.summary.focus({preventScroll:true});});
         });
         record.list.append(button);
       });
