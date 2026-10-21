@@ -1310,7 +1310,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <p class="path-note" id="saveModeDescription">进度自动保存；换版本或设备可通过存档管理导出、导入。</p>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.11</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.1.12</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1398,7 +1398,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.1.11';
+const GAME_VERSION = '1.1.12';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -1406,6 +1406,11 @@ const MAX_STAMINA_CAP = 480;
 const UNLOCK_COSTS = [0,900,2200,4800,9000,15000,24000,36000,52000,75000,105000,145000];
 const UNLOCK_LEVELS = [1,3,5,7,9,11,13,15,17,20,23,26];
 function energyCost(lv){return integer(lv,1,1,MAX_LV);}
+const GENERATOR_LUCK_CHANCE=.05,ORDER_GOLD_MULTIPLIER=1.15;
+function rollGeneratorLevel(lv){
+  const selected=integer(lv,1,1,MAX_LV);
+  return selected<MAX_LV&&Math.random()<GENERATOR_LUCK_CHANCE?selected+1:selected;
+}
 function expForLevel(lv){ return Math.round(80+40*lv+12*Math.pow(lv,1.5)); }
 function genUpgradeCost(id,lv){return Math.round((750+(id-1)*260)*Math.pow(2.02,lv-1));}
 function genUpgradeRequired(g){ return Math.max(itemInfo(g.itemId).minLv,2*g.lv+1); }
@@ -3007,7 +3012,7 @@ function finishSaveLoad(state){
  const gift=applyState(state);items.forEach(it=>it.emoji=foodIcon(it.id,1));applyAppearance();ensureDaily();const recovered=syncStamina();
  const previousCount=orders.length;orders=orders.filter(order=>order.done||deliveryPlan(order)||orderFits(order.req));const adjusted=previousCount-orders.length;
  if(orders.length&&orders.every(o=>o.done))orders=[];fillOrders();gameLoaded=true;render();
- if(adjusted)toast('已免费调整'+adjusted+'笔超出当前制作能力的旧订单，棋盘食物未消耗','ok');else if(gift)toast('五种道具已补发','ok');else if(recovered)toast('离线恢复'+recovered+'体力','ok');
+ if(adjusted)toast('已免费调整'+adjusted+'笔超出当前制作能力的旧订单，棋盘食物未消耗','ok');else if(gift)toast(gift==='ten'?'更新礼物：每种道具已补发10个':'五种初始道具已补发','ok');else if(recovered)toast('离线恢复'+recovered+'体力','ok');
 }
 
 function activateSaveCandidate(index){
@@ -3110,6 +3115,12 @@ let life=createLifeState();
 let cLv = 1, cExp = 0, expNeed = expForLevel(1);
 let inv = {speed:1,bomb:1,tempSlot:1,mergeAll:1,infinite:1};
 let starterToolsGranted=true;
+let toolGift1112Granted=false;
+function grantUpdateTools(){
+  if(toolGift1112Granted)return false;
+  Object.keys(inv).forEach(key=>inv[key]=Math.min(Number.MAX_SAFE_INTEGER,inv[key]+10));
+  toolGift1112Granted=true;return true;
+}
 function grantLegacyStarterTools(){
   if(starterToolsGranted)return false;
   ['speed','bomb','tempSlot','mergeAll','infinite'].forEach(key=>inv[key]++);
@@ -3274,7 +3285,7 @@ function packSave(){
     gens:gens.map(g=>({itemId:g.itemId,lv:g.lv,unlocked:g.unlocked})),
     unlockedIds:items.filter(it=>it.unlocked).map(it=>it.id),dex,dishesDex,cLv,cExp,
     achievements:achs.filter(a=>a.done).map(a=>a.id),totalGold,stats,genSelState,halfRefresh,
-    lastStaminaAt,daily,meta,calendarFloor,discoveredForms,discoveryRules:1,infiniteUntil,surpriseStaminaReserve,starterToolsGranted,restaurantRules:2,restaurant,lifeRules:2,life,regularRoster,attendance,migrationFoods
+    lastStaminaAt,daily,meta,calendarFloor,discoveredForms,discoveryRules:1,infiniteUntil,surpriseStaminaReserve,starterToolsGranted,toolGift1112Granted,restaurantRules:2,restaurant,lifeRules:2,life,regularRoster,attendance,migrationFoods
   }};
   return sealSave(packed);
 }
@@ -3330,6 +3341,7 @@ function normalizeState(raw){
   n.unlockedIds=new Set(d.unlockedIds.filter(id=>items.some(it=>it.id===id)));n.unlockedIds.add(1);
   n.gens=items.map(it=>{const old=d.gens.find(g=>g&&g.itemId===it.id)||{};const lv=integer(old.lv,1,1,MAX_LV);return {id:it.id,itemId:it.id,lv,upCost:genUpgradeCost(it.id,lv),unlocked:n.unlockedIds.has(it.id)};});
   n.starterToolsGranted=d.starterToolsGranted===true;
+  n.toolGift1112Granted=d.toolGift1112Granted===true;
   n.inv={};Object.keys(inv).forEach(k=>n.inv[k]=integer(d.inv&&d.inv[k],0,0,Number.MAX_SAFE_INTEGER));
   n.dex={};items.forEach(it=>n.dex[it.id]=integer(d.dex&&d.dex[it.id],0,0,MAX_LV));
   n.dishesDex={};Object.keys(dishes).forEach(id=>{const lv=integer(d.dishesDex&&d.dishesDex[id],0,0,MAX_LV);if(lv)n.dishesDex[id]=lv;});
@@ -3369,12 +3381,13 @@ function applyState(n){
   grid=n.grid;gold=n.gold;stamina=n.stamina;maxStamina=n.maxStamina;staminaCapBase=n.staminaCapBase;gridSize=n.gridSize;tempAdd=n.tempAdd;slotPurchases=n.slotPurchases;appearance=n.appearance;applyAppearance();
   slotCost=n.slotCost;staUpCost=n.staUpCost;cLv=n.cLv;cExp=n.cExp;expNeed=expForLevel(cLv);totalGold=n.totalGold;
   discoveredForms=n.discoveredForms;infiniteUntil=n.infiniteUntil;surpriseStaminaReserve=n.surpriseStaminaReserve;
-  gens=n.gens;items.forEach(it=>it.unlocked=n.unlockedIds.has(it.id));inv=n.inv;starterToolsGranted=n.starterToolsGranted;dex=n.dex;dishesDex=n.dishesDex;stats=n.stats;achs=n.achs;
+  gens=n.gens;items.forEach(it=>it.unlocked=n.unlockedIds.has(it.id));inv=n.inv;starterToolsGranted=n.starterToolsGranted;toolGift1112Granted=n.toolGift1112Granted;dex=n.dex;dishesDex=n.dishesDex;stats=n.stats;achs=n.achs;
   genSelState=n.genSelState;halfRefresh=n.halfRefresh;lastStaminaAt=n.lastStaminaAt;daily=n.daily;meta=n.meta;calendarFloor=n.calendarFloor;
   migrationFoods=n.migrationFoods;migrationReturnCount=n.migrationReturnCount;regularRoster=n.regularRoster;attendance=n.attendance;restaurant=n.restaurant;life=n.life;lifePuzzleSelection=-1;syncLifeUnlocks(false);restaurantNotices=[];clearTimeout(restaurantNoticeTimer);restaurantNoticeTimer=null;
   orders=n.orders;selectedIdx=-1;
   // Grant only after the complete save has been validated and actually applied.
-  return grantLegacyStarterTools();
+  const starterGift=grantLegacyStarterTools();
+  return grantUpdateTools()?'ten':starterGift?'starter':'';
 }
 function initialStorageUnavailable(error){
  return ['SecurityError','QuotaExceededError'].includes(error?.name)||/insecure|access.*denied|quota|not.?allowed|read.?only|storage.*disabled|写入后核对失败/i.test(String(error?.message||error));
@@ -3741,7 +3754,8 @@ function grantOrderSurprise(order){
   inv[reward.item]++;return TOOL_NAMES[reward.item]+'×1';
 }
 function makeOrder(req,flags={}){
-  const rw=Math.max(1,Math.round(req.reduce((sum,r)=>sum+foodValue(r.id,r.lv),0)*(flags.high?1.12:flags.complex?1.04:flags.dish?1.08:1)));
+  const baseReward=Math.max(1,Math.round(req.reduce((sum,r)=>sum+foodValue(r.id,r.lv),0)*(flags.high?1.12:flags.complex?1.04:flags.dish?1.08:1)));
+  const rw=Math.max(1,Math.round(baseReward*ORDER_GOLD_MULTIPLIER));
   const exp=req.reduce((sum,r)=>sum+8+r.lv*3+(r.id>=100?4:0),0)+(flags.high?6:0);
   const surprise=flags.restored?normalizeOrderSurprise(flags.surprise):rollOrderSurprise();
   const uid=validOrderUid(flags.uid)?flags.uid:newOrderUid();
@@ -4040,7 +4054,7 @@ function renderGens(){
     }else{
       const lv=Math.min(g.lv,Math.max(1,genSelState[g.itemId]||1));genSelState[g.itemId]=lv;
       const info=evo(d.id,lv);
-      card.innerHTML=`<div class="gen-name">${d.name} <small>Lv${g.lv}</small></div><button class="gen-btn" id="gbtn_${idx}" onclick="spawn(${idx})" aria-label="发射${info.name} L${lv}，消耗${energyCost(lv)}点体力" title="${info.name} L${lv} · ${energyCost(lv)}⚡"><span class="gicon">${info.emoji}</span><span class="g-food-name">${info.name}</span></button><button class="lv-trigger" onclick="openLevelPicker(${idx})" aria-label="选择${d.name}发射等级">${info.emoji}<span>L${lv}</span><span>▾</span></button>`;
+      card.innerHTML=`<div class="gen-name">${d.name} <small>Lv${g.lv}</small></div><button class="gen-btn" id="gbtn_${idx}" onclick="spawn(${idx})" aria-label="发射${info.name} L${lv}，消耗${energyCost(lv)}点体力${lv<MAX_LV?'，5%概率额外升1级':''}" title="${info.name} L${lv} · ${energyCost(lv)}⚡${lv<MAX_LV?' · 5%概率升1级':''}"><span class="gicon">${info.emoji}</span><span class="g-food-name">${info.name}</span></button><button class="lv-trigger" onclick="openLevelPicker(${idx})" aria-label="选择${d.name}发射等级">${info.emoji}<span>L${lv}</span><span>▾</span></button>`;
     }
     box.appendChild(card);
   });
@@ -4147,7 +4161,7 @@ function cookAdvanced(){
 function openLevelPicker(idx){
   const g=gens[idx];if(!g||!g.unlocked)return;
   document.getElementById('levelTitle').textContent=itemInfo(g.itemId).name+' · 选择发射等级';
-  let h='';
+  let h='<p class="path-note">按所选等级消耗体力，5%概率额外升1级，最高L12。</p>';
   for(let lv=1;lv<=MAX_LV;lv++){
     const info=evo(g.itemId,lv),locked=lv>g.lv,selected=(genSelState[g.itemId]||1)===lv;
     h+=`<button class="level-option ${selected?'current':''}" onclick="chooseGenLevel(${idx},${lv})" ${locked?'disabled':''} aria-pressed="${selected}">${info.emoji}<span>L${lv} ${info.name}</span><small>${locked?'🔒升级解锁':energyCost(lv)+'⚡'}</small></button>`;
@@ -4327,7 +4341,10 @@ function spawn(idx){
   let empty=-1;for(let i=0;i<total;i++){if(isFreeCell(i)){empty=i;break;}}
   if(empty<0){toast('棋盘已满，先合成或交付','err');return;}
   if(!spendEnergy(cost)){updateRecoveryUi();toast('体力不足，需要 '+cost+'⚡','err');return;}
-  grid[empty]={itemId:g.itemId,level:lv};noteDaily('spawns');recordDex(g.itemId,lv);sfx('spawn');checkAch();render();scheduleSave();boardEffect(empty,'spawn');
+  // Roll only after a free cell and the selected level's stamina payment succeed.
+  const outputLevel=rollGeneratorLevel(lv),lucky=outputLevel>lv;
+  grid[empty]={itemId:g.itemId,level:outputLevel};noteDaily('spawns');recordDex(g.itemId,outputLevel);sfx(lucky?'levelup':'spawn');checkAch();render();scheduleSave();boardEffect(empty,lucky?'merge':'spawn');
+  if(lucky)toast('幸运备料！L'+lv+' → L'+outputLevel,'ok');
 }
 function upGen(idx){
   const g=gens[idx];if(!g||!g.unlocked)return;
