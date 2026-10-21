@@ -1237,6 +1237,8 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 .account-reward b{display:block;}
 .account-toast{position:fixed;z-index:214010;bottom:calc(var(--safe-bottom,0px) + 18px);left:50%;transform:translateX(-50%);width:max-content;max-width:90vw;padding:9px 14px;background:var(--text);color:var(--panel);border-radius:10px;font-size:13px;pointer-events:none;}
 
+.account-working{font-size:13px;color:var(--muted);padding:6px 0;margin:6px 0;}
+
 </style>
 </head>
 <body>
@@ -1339,7 +1341,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <div class="account-entry"><span id="sqAccountStatus" class="account-status">游客 · 本机存档</span><button id="sqAccountEntry" onclick="SQAccounts.open()">登录／注册</button></div>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.0</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.1</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1428,7 +1430,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.2.0';
+const GAME_VERSION = '1.2.1';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -5033,24 +5035,35 @@ window.SQCloudAPI=class SQCloudAPI{
   return this.session;
  }
  clearSession(){const owner=this.session?.user.id||this.memory?.user.id;this.session=null;this.memory=null;try{const stored=JSON.parse(localStorage.getItem(this.storageKey)||'null');if(!stored||stored.user?.id===owner)localStorage.removeItem(this.storageKey);}catch(e){}}
- async request(path,{method='POST',body,token,timeout=25000}={}){
+ async request(path,{method='POST',body,token,timeout=30000,retries=0}={}){
   if(!this.enabled)throw Error('账号服务尚未配置');
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
-  try{
-   const headers={'apikey':this.key,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
-   const response=await fetch(this.url+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal,credentials:'omit',cache:'no-store'});
-   const text=await response.text();let data=null;try{data=text?JSON.parse(text):null;}catch(e){throw Error('账号服务返回了无法识别的内容');}
-   if(!response.ok){
-    const error=Error(data?.message||data?.msg||data?.error_description||'账号请求失败');error.status=response.status;error.code=data?.code||data?.error_code||'';error.detail=data?.details||'';throw error;
-   }
-   return data;
-  }catch(e){if(e.name==='AbortError')throw Error('连接超时，本机进度仍保留');throw e;}finally{clearTimeout(timer);}
+  const encoded=body===undefined?undefined:JSON.stringify(body);
+  for(let attempt=0;;attempt++){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+   try{
+    const headers={'apikey':this.key,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
+    const response=await fetch(this.url+path,{method,headers,body:encoded,signal:controller.signal,credentials:'omit',cache:'no-store',keepalive:path.endsWith('/sq_commit')&&new Blob([encoded||'']).size<55000});
+    const text=await response.text();let data=null;
+    try{data=text?JSON.parse(text):null;}catch(e){const error=Error('账号服务暂时没有返回有效内容，请稍后重试');error.status=response.status;error.transient=response.status>=500;throw error;}
+    if(!response.ok){
+     const error=Error(data?.message||data?.msg||data?.error_description||'账号请求失败');error.status=response.status;error.code=data?.code||data?.error_code||'';error.detail=data?.details||'';
+     const retry=response.headers.get('Retry-After');error.retryAfter=Math.min(3600,Math.max(0,Number(retry)||Math.ceil((Date.parse(retry)-Date.now())/1000)||0));
+     error.transient=[408,425,500,502,503,504].includes(response.status);throw error;
+    }
+    return data;
+   }catch(original){
+    const e=original.name==='AbortError'?Object.assign(Error('连接超时，本机进度仍保留'),{transient:true,code:'NETWORK_TIMEOUT'}):original;
+    if(e instanceof TypeError||e.name==='NetworkError')e.transient=true;
+    if(attempt<retries&&e.transient&&navigator.onLine!==false){await new Promise(resolve=>setTimeout(resolve,600+Math.random()*300));continue;}
+    throw e;
+   }finally{clearTimeout(timer);}
+  }
  }
  async refresh(force=false){
   if(this.refreshing)return this.refreshing;
   const work=async()=>{
    if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
-   const saved=this.readSession();if(!force&&saved&&saved.user.id===this.session.user.id&&saved.expires_at>this.session.expires_at)this.session=saved;
+   const saved=this.readSession();if(saved&&saved.user.id===this.session.user.id&&(saved.expires_at>this.session.expires_at||saved.refresh_token!==this.session.refresh_token)){this.session=saved;force=false;}
    if(!force&&this.session?.expires_at>Date.now()/1000+60)return this.session;
    if(!this.session?.refresh_token)throw Error('AUTH_REQUIRED');
    try{const result=await this.request('/auth/v1/token?grant_type=refresh_token',{body:{refresh_token:this.session.refresh_token}});return this.storeSession(result,this.readSession()?.user.id===result.user.id);}
@@ -5063,8 +5076,8 @@ window.SQCloudAPI=class SQCloudAPI{
   const actor=this.session?.user.id;
   try{
    await this.refresh();if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');
-   try{return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}
-   catch(e){if(e.status===401&&this.session?.refresh_token){await this.refresh(true);if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token});}throw e;}
+   try{return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token,timeout:12000,retries:['sq_bootstrap','sq_open','sq_heartbeat','sq_commit','sq_inbox','sq_history','sq_admin_list','sq_admin_audit'].includes(name)?1:0});}
+   catch(e){if(e.status===401&&this.session?.refresh_token){await this.refresh(true);if(this.session?.user.id!==actor)throw Error('SESSION_CHANGED');return await this.request('/rest/v1/rpc/'+name,{body:args,token:this.session.access_token,timeout:12000,retries:['sq_bootstrap','sq_open','sq_heartbeat','sq_commit','sq_inbox','sq_history','sq_admin_list','sq_admin_audit'].includes(name)?1:0});}throw e;}
   }catch(e){e.accountId=actor;throw e;}
  }
  async signIn(email,password){
@@ -5103,6 +5116,12 @@ window.SQCloudAPI=class SQCloudAPI{
  static id(){if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((n,i)=>([4,6,8,10].includes(i)?'-':'')+n.toString(16).padStart(2,'0')).join('');}
  static message(e){
   const code=e?.message||String(e),messages={ACCOUNT_BANNED:'账号已被停用'+(e.detail?'：'+e.detail:''),ADMIN_REQUIRED:'此账号没有管理权限',AUTH_REQUIRED:'请重新登录',SESSION_MOVED:'另一设备正在经营，已暂停同步',CLOUD_CONFLICT:'云端进度已更新，请核对后继续',REQUEST_REUSED:'操作编号发生冲突，请重新操作',REWARD_NOT_AVAILABLE:'奖励已领取或不属于当前账号',REWARD_STATE_CHANGED:'进度已变化，请重试领取',REWARD_AMOUNT_INVALID:'奖励数量校验未通过',SAVE_SIZE_INVALID:'存档超过云端8MB限制，请先导出本机备份',invalid_credentials:'邮箱或密码不正确'};
+  if(e?.status===429)return '请求较频繁，请'+(e.retryAfter?e.retryAfter+'秒后':'稍后')+'再试；已收到的验证码仍可填写';
+  if(e?.code==='email_not_confirmed'||/email not confirmed/i.test(code))return '邮箱尚未验证，请填写邮件验证码';
+  if(e?.code==='email_address_invalid'||/invalid.*email|email.*invalid/i.test(code))return '请填写有效的邮箱地址';
+  if(e?.code==='over_email_send_rate_limit')return '邮件发送过于频繁，请稍后重新发送';
+  if(e?.code==='over_request_rate_limit')return '操作较频繁，请稍后重试';
+  if(e?.transient&&e.code!=='NETWORK_TIMEOUT')return '网络暂时不稳定，本机进度仍保留，请稍后重试';
   return messages[code]||(/invalid login credentials/i.test(code)?'邮箱或密码不正确':code);
  }
 };
@@ -5110,7 +5129,7 @@ window.SQCloudAPI=class SQCloudAPI{
 /* Optional accounts. Guest data is never moved or deleted when an account is selected. */
 window.SQAccounts={
  phase:'guest',uid:null,api:null,player:null,isAdmin:false,serverRevision:0,epoch:0,dirty:null,lastAckRaw:null,pending:null,
- timer:null,heartbeatTimer:null,uploading:null,busy:false,suppress:false,held:false,lease:false,choices:[],memory:new Map(),
+ timer:null,heartbeatTimer:null,retryTimer:null,retryAttempt:0,retryAt:0,tickRunning:false,lastCloudAt:0,connecting:null,uploading:null,busy:false,suppress:false,held:false,lease:false,choices:[],memory:new Map(),
  h(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));},
  base(){try{return window.localStorage;}catch(e){return {getItem:k=>this.memory.get(k)||null,setItem:(k,v)=>this.memory.set(k,String(v)),removeItem:k=>this.memory.delete(k)};}},
  key(key){return this.uid?key+'::account:'+this.uid:key;},
@@ -5129,8 +5148,8 @@ window.SQAccounts={
    this.ensureLayer();this.status();
    if(!this.api.enabled)return;this.saveGateEntry();
    this.heartbeatTimer=setInterval(()=>this.tick(),15000);
-   document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.tick();});
-   window.addEventListener('online',()=>this.tick());window.addEventListener('pagehide',()=>this.releaseOnExit());
+   document.addEventListener('visibilitychange',()=>{if(!document.hidden){this.retryAt=0;this.tick();}else if(this.uid&&this.phase==='online'&&this.dirty)this.flush().catch(e=>this.handleError(e));});
+   window.addEventListener('online',()=>{this.retryAt=0;this.tick();});window.addEventListener('offline',()=>{if(this.uid&&this.phase==='online')this.handleError(Object.assign(Error('网络已断开'),{transient:true}));});window.addEventListener('pagehide',()=>this.releaseOnExit());
    window.addEventListener('hashchange',()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.has('access_token')||h.has('error')||h.has('error_description')||h.has('error_code'))location.reload();});
    window.addEventListener('storage',event=>{
     if(event.key!==this.api.storageKey||!this.uid)return;
@@ -5167,28 +5186,50 @@ window.SQAccounts={
  pause(){if(!this.held){this.previousBlocked=saveReadBlocked;this.held=true;}saveReadBlocked=true;pauseAudioForBackground();},
  unpause(){if(this.held){saveReadBlocked=this.previousBlocked||!document.getElementById('saveSafetyGate').hidden;this.held=false;if(gameLoaded&&!saveReadBlocked)applyAudioPreferences();}},
  show(title,html,close=true,hold=false){
-  this.ensureLayer();if(hold)this.pause();
+  this.ensureLayer();clearInterval(this.mailTimer);if(hold)this.pause();
   if(this.layer.hidden){this.previousFocus=document.activeElement;for(const el of document.body.children){if(el===this.layer||el.matches('script,style'))continue;el.dataset.cloudInert=el.inert?'1':'0';el.inert=true;}}
   this.layer.hidden=false;this.layer.inert=false;document.getElementById('sqAccountTitle').textContent=title;
-  document.getElementById('sqAccountClose').hidden=!close;document.getElementById('sqAccountBody').innerHTML=html+'<p class="account-error" id="sqAccountError" role="status"></p>';
+  document.getElementById('sqAccountClose').hidden=!close;document.getElementById('sqAccountBody').innerHTML=html+'<p class="account-working" id="sqAccountWorking" role="status" hidden></p><p class="account-error" id="sqAccountError" role="status"></p>';
   requestAnimationFrame(()=>this.layer.querySelector('input,button:not([hidden])')?.focus({preventScroll:true}));
  },
  close(){
-  this.layer.hidden=true;for(const el of document.querySelectorAll('[data-cloud-inert]')){el.inert=el.dataset.cloudInert==='1';delete el.dataset.cloudInert;}
+  clearInterval(this.mailTimer);this.layer.hidden=true;for(const el of document.querySelectorAll('[data-cloud-inert]')){el.inert=el.dataset.cloudInert==='1';delete el.dataset.cloudInert;}
   this.unpause();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});
  },
- bind(id,fn){document.getElementById(id)?.addEventListener('click',()=>this.run(fn));},
- async run(fn){
-  if(this.busy)return;this.busy=true;const disabled=new Map([...this.layer.querySelectorAll('button')].map(b=>[b,b.disabled]));disabled.forEach((v,b)=>b.disabled=true);
+ bind(id,fn){const button=document.getElementById(id);button?.addEventListener('click',()=>this.run(fn,button));},
+ async run(fn,button=null){
+  if(this.busy)return;this.busy=true;this.layer.setAttribute('aria-busy','true');
+  const disabled=new Map([...this.layer.querySelectorAll('button')].map(b=>[b,b.disabled])),label=button?.textContent;
+  disabled.forEach((v,b)=>b.disabled=true);
+  const working=document.getElementById('sqAccountWorking');
+  if(working){working.hidden=false;working.textContent=/创建|发送/.test(label||'')?'正在发送邮件，请稍候…':'正在处理，请稍候…';}
+  if(button)button.textContent=label+'…';
+  const slow=setTimeout(()=>{if(working?.isConnected)working.textContent='网络响应较慢，仍在连接，请勿重复提交。';},6000);
   try{await fn();}catch(e){this.handleError(e);}
-  finally{this.busy=false;disabled.forEach((v,b)=>{if(b.isConnected)b.disabled=v;});this.status();}
+  finally{clearTimeout(slow);this.busy=false;this.layer.removeAttribute('aria-busy');if(working?.isConnected)working.hidden=true;if(button?.isConnected)button.textContent=label;disabled.forEach((v,b)=>{if(b.isConnected)b.disabled=v;});this.updateMailCooldown();this.status();}
+ },
+ validEmail(value){const email=String(value||'').trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error('请填写有效的邮箱地址');return email;},
+ mailKey(){return 'sq.restaurant.pending-mail:'+new URL(this.api.url).host;},
+ mailDraft(){try{const d=JSON.parse(sessionStorage.getItem(this.mailKey())||'null');return d&&Date.now()-d.at<1800000?d:null;}catch(e){return this.mailMemory||null;}},
+ rememberMail(email,type,name='',wait=60){
+  const old=this.mailDraft(),d={email,type,name:name||(old?.email===email?old.name:''),at:Date.now(),until:Date.now()+wait*1000};
+  this.mailMemory=d;try{sessionStorage.setItem(this.mailKey(),JSON.stringify(d));}catch(e){}return d;
+ },
+ clearMail(){this.mailMemory=null;try{sessionStorage.removeItem(this.mailKey());}catch(e){}},
+ updateMailCooldown(){
+  const button=document.getElementById('sqResendEmail');if(!button)return;
+  const d=this.mailDraft(),email=document.getElementById('sqEmail')?.value.trim(),type=document.getElementById('sqCodeType')?.value;
+  const wait=d?.email===email&&d.type===type?Math.max(0,Math.ceil((d.until-Date.now())/1000)):0;
+  button.disabled=this.busy||wait>0;button.textContent=wait?'重新发送（'+wait+'秒）':'重新发送';
  },
  error(text){const e=document.getElementById('sqAccountError');if(e)e.textContent=text;},
  note(message){let e=document.getElementById('sqAccountToast');if(!e){e=document.createElement('div');e.id='sqAccountToast';e.className='account-toast';document.body.append(e);}e.textContent=message;clearTimeout(this.noteTimer);this.noteTimer=setTimeout(()=>e.remove(),5000);},
  status(){
   const e=document.getElementById('sqAccountStatus');if(!e)return;
   const local=manualSaveMode?'本次页面':'本机已存';
-  e.textContent=this.uid?(this.phase==='online'?(this.dirty?local+' · 待同步':'云端已同步'):local+' · 待核对'):(manualSaveMode?'游客 · 手动备份':'游客 · 本机存档');
+  const text=this.uid?(this.phase==='online'?(this.uploading?'正在同步…':this.dirty?local+' · 待同步':'云端已同步'):this.phase==='offline'?local+(navigator.onLine===false?' · 等待网络':' · 自动重试中'):local+' · 待核对'):(manualSaveMode?'游客 · 手动备份':'游客 · 本机存档');
+  e.textContent=text;
+  const detail=document.getElementById('sqCloudDetail');if(detail)detail.textContent=text;
   e.classList.toggle('has-reward',(this.pendingCount||0)>0);if(this.pendingCount)e.textContent+=' · '+this.pendingCount+'份奖励';
   const b=document.getElementById('sqAccountEntry');if(b)b.textContent=this.uid?'账号与云存档':'登录／注册';
   document.querySelector('button[onclick="openSettings()"]')?.classList.toggle('account-has-reward',(this.pendingCount||0)>0);
@@ -5199,16 +5240,19 @@ window.SQAccounts={
  },
  loginForm(message=''){
   this.show('登录餐厅账号','<label>邮箱<input id="sqEmail" type="email" autocomplete="username" inputmode="email" maxlength="254"></label><label>密码<input id="sqPassword" type="password" autocomplete="current-password" maxlength="128"></label><div class="account-actions"><button id="sqSignIn" class="primary">登录</button><button id="sqRegister">注册账号</button><button id="sqForgot">忘记密码</button><button id="sqEmailCodeEntry">邮箱验证码</button></div><p class="account-note">游客进度会保留；登录后先核对存档，再开始同步。</p>');
+  document.getElementById('sqEmail').value=this.authEmail||this.mailDraft()?.email||'';
   this.error(message);this.bind('sqSignIn',async()=>{const email=document.getElementById('sqEmail').value,password=document.getElementById('sqPassword').value;await this.loginCredentials(email,password);});
   this.bind('sqRegister',()=>this.registerForm());this.bind('sqForgot',()=>this.recoveryForm());this.bind('sqEmailCodeEntry',()=>this.emailCodeForm());
+  const draft=this.mailDraft();if(draft){const b=document.createElement('button');b.id='sqContinueMail';b.textContent='继续邮箱验证';this.layer.querySelector('.account-actions').append(b);this.bind('sqContinueMail',()=>this.emailCodeForm(draft.email,draft.type,'可继续填写已收到的邮件验证码。'));}
   if(this.api.pendingRedirect){const b=document.createElement('button');b.id='sqRetryMail';b.textContent='重试验证邮件';this.layer.querySelector('.account-actions').append(b);this.bind('sqRetryMail',async()=>{try{const recovery=await this.api.acceptRedirect();if(recovery)this.passwordForm();else await this.connect();}catch(e){this.loginForm(SQCloudAPI.message(e));}});}
   if(this.uid){const b=document.createElement('button');b.id='sqStayGuest';b.textContent='返回游客';this.layer.querySelector('.account-actions').append(b);this.bind('sqStayGuest',()=>this.leaveAccount(true));}
   if(this.uid){document.getElementById('sqRegister').hidden=true;document.getElementById('sqEmailCodeEntry').hidden=true;}
  },
  async loginCredentials(email,password){
   if(gameLoaded&&!saveReadBlocked)saveGame();this.pause();clearTimeout(this.timer);if(this.uploading)await this.uploading.catch(()=>{});
+  this.authEmail=this.validEmail(email);
   const candidate=new SQCloudAPI(this.api.config);
-  try{await candidate.signIn(email,password);}catch(e){this.loginForm(SQCloudAPI.message(e));return;}
+  try{await candidate.signIn(this.authEmail,password);}catch(e){if(e.code==='email_not_confirmed'||/email not confirmed/i.test(e.message))this.emailCodeForm(this.authEmail,'signup','请先填写注册邮件验证码。');else this.error(SQCloudAPI.message(e));return;}
   if(this.uid&&candidate.session.user.id!==this.uid)await this.leaveAccount(false);
   this.api=candidate;this.api.storeSession(this.api.session);await this.connect();
  },
@@ -5217,15 +5261,21 @@ window.SQAccounts={
   this.bind('sqSignUp',async()=>{
    const name=document.getElementById('sqName').value.trim(),email=document.getElementById('sqEmail').value,password=document.getElementById('sqPassword').value;
    if(!name||password.length<10)throw Error('请填写昵称，并设置至少10位密码');
-   const result=await this.api.signUp(email,password,name,location.origin+location.pathname);
-   if(result?.access_token)await this.connect(name);else this.emailCodeForm(email,'signup','注册邮件已发送，请填写邮件中的验证码。');
+   const address=this.validEmail(email);this.authEmail=address;
+   const previous=this.mailDraft();if(previous?.email===address&&previous.type==='signup'&&previous.until>Date.now()){this.emailCodeForm(address,'signup','请先使用已收到的验证码，稍后可重新发送。');return;}
+   this.rememberMail(address,'signup',name);
+   let result;
+   try{result=await this.api.signUp(address,password,name,location.origin+location.pathname);}
+   catch(e){if(e.transient){this.emailCodeForm(address,'signup','注册结果尚未确认。若已收到邮件，可直接填写验证码；未收到请稍后重新发送，无需反复创建账号。');return;}if(e.status===429)this.rememberMail(address,'signup',name,Math.max(60,e.retryAfter||0));else this.rememberMail(address,'signup',name,0);throw e;}
+   if(result?.access_token){this.clearMail();await this.connect(name);}else this.emailCodeForm(address,'signup','注册邮件已发送，请填写邮件中的验证码。');
   });this.bind('sqBack',()=>this.loginForm());
  },
  recoveryForm(){
   this.show('找回密码','<label>账号邮箱<input id="sqEmail" type="email" autocomplete="email" inputmode="email"></label><div class="account-actions"><button id="sqRecover" class="primary">发送重置邮件</button><button id="sqBack">返回登录</button></div>');
-  this.bind('sqRecover',async()=>{const email=document.getElementById('sqEmail').value;await this.api.recover(email,location.origin+location.pathname);this.emailCodeForm(email,'recovery','如该邮箱已注册，将收到重置验证码，请查看收件箱。');});this.bind('sqBack',()=>this.loginForm());
+  this.bind('sqRecover',async()=>{const email=this.validEmail(document.getElementById('sqEmail').value);this.rememberMail(email,'recovery');try{await this.api.recover(email,location.origin+location.pathname);}catch(e){if(e.transient){this.emailCodeForm(email,'recovery','发送结果尚未确认。若已收到邮件，可直接填写验证码；未收到请稍后重发。');return;}throw e;}this.emailCodeForm(email,'recovery','如该邮箱已注册，将收到重置验证码，请查看收件箱。');});this.bind('sqBack',()=>this.loginForm());
  },
- emailCodeForm(email='',type='recovery',message=''){
+ emailCodeForm(email='',type=null,message=''){
+  const draft=this.mailDraft();email=email||draft?.email||'';type=type||draft?.type||'recovery';
   this.show('邮箱验证码',`<label>账号邮箱<input id="sqEmail" type="email" autocomplete="email" inputmode="email" maxlength="254" value="${this.h(email)}"></label><label>验证用途<select id="sqCodeType"><option value="recovery" ${type==='recovery'?'selected':''}>找回密码</option><option value="signup" ${type==='signup'?'selected':''}>注册确认</option></select></label><label>邮件验证码<input id="sqEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="输入邮件中的验证码"></label><div class="account-actions"><button id="sqVerifyEmail" class="primary">验证并继续</button><button id="sqResendEmail">重新发送</button><button id="sqBack">返回登录</button></div><p class="account-note">在邮箱中查看验证码，回到这里填写。验证码不会写入游戏存档。</p>`,true,true);
   this.error(message);
   this.bind('sqVerifyEmail',async()=>{
@@ -5235,21 +5285,28 @@ window.SQAccounts={
    const candidate=new SQCloudAPI(this.api.config);await candidate.verifyEmailCode(email,code,type);
    if(this.uid&&candidate.session.user.id!==this.uid)await this.leaveAccount(false);
    this.api=candidate;this.api.storeSession(this.api.session);
-   if(type==='recovery')this.passwordForm();else await this.connect();
+   this.clearMail();if(type==='recovery')this.passwordForm();else await this.connect();
   });
   this.bind('sqResendEmail',async()=>{
    const email=document.getElementById('sqEmail').value.trim(),type=document.getElementById('sqCodeType').value;
-   if(!email)throw Error('请先填写邮箱');
-   if(type==='recovery')await this.api.recover(email,location.origin+location.pathname);else await this.api.resendSignup(email,location.origin+location.pathname);
-   this.error('邮件已重新发送，请使用最新验证码；如暂未收到，可检查垃圾邮件。');
+   this.validEmail(email);const previous=this.mailDraft();if(previous?.email===email&&previous.type===type&&previous.until>Date.now())throw Error('请等待倒计时结束后重新发送');
+   this.rememberMail(email,type);
+   try{if(type==='recovery')await this.api.recover(email,location.origin+location.pathname);else await this.api.resendSignup(email,location.origin+location.pathname);}
+   catch(e){if(e.status===429)this.rememberMail(email,type,'',Math.max(60,e.retryAfter||0));throw e;}
+   this.error('邮件已重新发送，请使用最新验证码；如暂未收到，可检查垃圾邮件。');this.updateMailCooldown();
   });
-  this.bind('sqBack',()=>this.loginForm());
+  this.bind('sqBack',()=>this.loginForm());this.updateMailCooldown();this.mailTimer=setInterval(()=>this.updateMailCooldown(),1000);
+  document.getElementById('sqEmail').addEventListener('input',()=>this.updateMailCooldown());document.getElementById('sqCodeType').addEventListener('change',()=>this.updateMailCooldown());
  },
  passwordForm(){
   this.show('设置新密码','<label>新密码（至少10位）<input id="sqNewPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128"></label><div class="account-actions"><button id="sqChangePassword" class="primary">保存新密码</button></div>',false,true);
   this.bind('sqChangePassword',async()=>{const value=document.getElementById('sqNewPassword').value;if(value.length<10)throw Error('密码至少10位');await this.api.changePassword(value);await this.connect();});
  },
  async connect(name=null,takeOver=false){
+  if(this.connecting)return this.connecting;
+  this.connecting=this.connectNow(name,takeOver).finally(()=>{this.connecting=null;});return this.connecting;
+ },
+ async connectNow(name=null,takeOver=false){
   const api=this.api;
   if(!this.uid&&gameLoaded&&!saveReadBlocked){saveGame();this.guestRaw=JSON.stringify(packSave());}
   else if(!this.guestRaw){try{this.guestRaw=this.base().getItem(SAVE_KEY);}catch(e){}}
@@ -5262,8 +5319,8 @@ window.SQAccounts={
   this.lease=true;this.epoch=opened.epoch;this.serverRevision=opened.revision;this.pendingCount=opened.pendingCount;
   const local=this.base().getItem(SAVE_KEY+'::account:'+this.accountId),meta=this.readMeta(this.accountId);
   const knownClaim=meta.pending?.claim&&opened.raw&&meta.pending.digest===saveChecksum(opened.raw);
-  if(opened.raw&&(local===opened.raw||knownClaim||(!meta.dirty&&meta.revision===opened.revision&&meta.synced===saveChecksum(opened.raw))))await this.selectRaw(opened.raw,opened,'cloud');
-  else if(meta.dirty&&local&&opened.raw&&meta.revision===opened.revision&&meta.synced===saveChecksum(opened.raw)&&this.candidate('',local,'local')?.error==='')await this.selectRaw(local,opened,'local');
+  if(opened.raw&&(local===opened.raw||knownClaim||(!meta.dirty&&meta.revision===opened.revision&&meta.synced===saveChecksum(opened.raw))))await this.selectRaw(opened.raw,opened,'cloud',true);
+  else if(meta.dirty&&local&&opened.raw&&meta.revision===opened.revision&&meta.synced===saveChecksum(opened.raw)&&this.candidate('',local,'local')?.error==='')await this.selectRaw(local,opened,'local',true);
   else this.chooseProgress(opened,local);
  },
  candidate(label,raw,kind){
@@ -5283,9 +5340,9 @@ window.SQAccounts={
   this.bind('sqFresh',()=>{const p=JSON.parse(this.initialFreshRaw);p.profileId=newOrderUid();p.revision=0;return this.selectRaw(JSON.stringify(sealSave(p)),opened,'fresh');});
   this.bind('sqRecheck',()=>this.connect());this.bind('sqStayGuest',()=>this.leaveAccount(true));
  },
- async selectRaw(raw,opened,kind){
+ async selectRaw(raw,opened,kind,justOpened=false){
   normalizeState(JSON.parse(raw));
-  const latest=await this.api.rpc('sq_open',{p_client_id:this.client,p_take_over:false});
+  const latest=justOpened?opened:await this.api.rpc('sq_open',{p_client_id:this.client,p_take_over:false});
   if(latest.busy||latest.revision!==opened.revision){if(latest.busy)return this.connect();this.epoch=latest.epoch;this.serverRevision=latest.revision;return this.chooseProgress(latest,this.base().getItem(SAVE_KEY+'::account:'+this.accountId));}
   this.epoch=latest.epoch;this.serverRevision=latest.revision;releaseSaveLease();this.uid=this.accountId;
   const stored=gameStorage().getItem(SAVE_KEY);if(stored)archiveSave(stored,'账号核对前的本机进度',true);
@@ -5293,7 +5350,7 @@ window.SQAccounts={
   this.phase='applying';this.suppress=true;this.lastAckRaw=latest.raw;this.dirty=null;this.pending=null;
   try{
    this.adoptRaw(raw);this.dirty=gameStorage().getItem(SAVE_KEY);this.phase='online';this.persistMeta();
-   await this.flush();this.close();this.note('账号已连接，云存档已核对');this.status();
+   await this.flush();this.clearRetry();this.close();this.note('账号已连接，云存档已核对');this.status();
   }finally{this.suppress=false;}
  },
  adoptRaw(raw){
@@ -5303,8 +5360,8 @@ window.SQAccounts={
  },
  saved(raw){
   if(this.suppress||!this.uid)return;
-  this.dirty=raw;this.persistMeta();this.status();clearTimeout(this.timer);
-  if(this.phase==='online')this.timer=setTimeout(()=>this.flush().catch(e=>this.handleError(e)),1000);
+  this.dirty=raw;this.persistMeta();this.status();
+  if(this.phase==='online'&&!this.timer)this.timer=setTimeout(()=>{this.timer=null;this.flush().catch(e=>this.handleError(e));},1200);
  },
  async resolvePending(){
   if(!this.pending)return;
@@ -5321,32 +5378,57 @@ window.SQAccounts={
   const pending=this.pending;
   const result=await this.api.rpc('sq_commit',{p_client_id:this.client,p_epoch:this.epoch,p_expected_revision:pending.revision,p_request_id:pending.id,p_save_raw:pending.raw,p_claim_id:pending.claim});
   if(result.raw!==raw||result.revision!==result.ackRevision)throw Error('CLOUD_CONFLICT');
-  this.serverRevision=result.revision;this.lastAckRaw=result.raw;this.pendingCount=result.pendingCount;
+  this.serverRevision=result.revision;this.lastAckRaw=result.raw;this.pendingCount=result.pendingCount;this.lastCloudAt=Date.now();
   if(this.dirty===raw)this.dirty=null;this.pending=null;this.persistMeta();return result;
  },
  async flush(){
   if(this.uploading)return this.uploading;
   if(!this.uid||this.phase!=='online')throw Error('请先连接并核对云存档');
-  clearTimeout(this.timer);
+  clearTimeout(this.timer);this.timer=null;
   this.uploading=(async()=>{
    if(this.pending)await this.resolvePending();
    while(this.dirty){const raw=this.dirty;await this.send(raw);}
-   this.status();
-  })().finally(()=>{this.uploading=null;});return this.uploading;
+   this.clearRetry();this.status();
+  })().finally(()=>{this.uploading=null;this.status();});this.status();return this.uploading;
+ },
+ clearRetry(){clearTimeout(this.retryTimer);this.retryTimer=null;this.retryAttempt=0;this.retryAt=0;},
+ scheduleRetry(){
+  clearTimeout(this.retryTimer);if(!this.uid||this.held||this.claimPending||this.phase!=='offline'||navigator.onLine===false)return;
+  const delay=Math.min(30000,2000*2**Math.min(this.retryAttempt++,4));this.retryAt=Date.now()+delay;
+  this.retryTimer=setTimeout(()=>{this.retryTimer=null;this.tick();},delay);
+ },
+ async resumeSync(){
+  const owner=this.uid,api=this.api;
+  const current=await api.rpc('sq_open',{p_client_id:this.client,p_take_over:false});
+  if(this.uid!==owner||this.api!==api||!['online','offline'].includes(this.phase))return;
+  if(current.busy)throw Error('SESSION_MOVED');
+  if(current.revision!==this.serverRevision){
+   if(this.pending&&!this.pending.claim&&current.lastRequestId===this.pending.id&&current.raw&&saveChecksum(current.raw)===saveChecksum(this.pending.raw)){
+    this.serverRevision=current.revision;this.lastAckRaw=current.raw;if(this.dirty===current.raw)this.dirty=null;this.pending=null;
+   }else throw Error('CLOUD_CONFLICT');
+  }
+  this.epoch=current.epoch;this.lease=true;this.pendingCount=current.pendingCount;this.phase='online';this.persistMeta();
+  await this.flush();this.clearRetry();this.status();
  },
  async tick(){
-  if(document.hidden||this.busy||!this.uid||!['online','offline'].includes(this.phase))return;
-  const owner=this.uid;
+  if(document.hidden||this.busy||this.tickRunning||this.uploading||!this.uid||!['online','offline'].includes(this.phase)||navigator.onLine===false)return;
+  if(this.phase==='offline'&&this.retryAt>Date.now())return;
+  const owner=this.uid;this.tickRunning=true;
   try{
-   if(this.phase==='offline'){await this.connect();return;}
+   if(this.phase==='offline'){await this.resumeSync();return;}
+   if(this.dirty){await this.flush();return;}
+   const checkedRevision=this.serverRevision;
    const r=await this.api.rpc('sq_heartbeat',{p_client_id:this.client,p_epoch:this.epoch});
-   if(this.uid!==owner)return;
-   this.pendingCount=r.pendingCount;if(r.revision!==this.serverRevision&&!this.uploading)throw Error('CLOUD_CONFLICT');this.status();
+   if(this.uid!==owner||this.phase!=='online')return;
+   this.lastCloudAt=Date.now();this.pendingCount=r.pendingCount;
+   if(r.revision>this.serverRevision&&!this.uploading&&this.serverRevision===checkedRevision)throw Error('CLOUD_CONFLICT');this.status();
   }catch(e){if(this.uid===owner)this.handleError(e);}
+  finally{this.tickRunning=false;}
  },
  handleError(e){
   const actor=this.uid||this.api?.session?.user.id;if(e.accountId&&e.accountId!==actor)return;
   const code=e.message||'',message=SQCloudAPI.message(e);this.error(message);this.status();
+  if(code==='SESSION_MOVED'&&this.uid&&this.phase==='online'&&!this.held){this.phase='offline';this.scheduleRetry();this.status();return;}
   if(['AUTH_REQUIRED','SESSION_CHANGED'].includes(code)){
    clearTimeout(this.timer);this.phase='authrequired';this.pause();this.loginForm(manualSaveMode?'请重新登录。当前进度仅在本次页面保留，离开前请备份。':'请重新登录。本次进度保留在当前账号的本机存档中。');
   }else if(code==='ACCOUNT_BANNED'){
@@ -5355,22 +5437,22 @@ window.SQAccounts={
   }else if(['SESSION_MOVED','CLOUD_CONFLICT'].includes(code)){
    this.phase='conflict';this.show('云存档需要核对',`<p>${this.h(message)}</p><p class="account-note">本机进度仍保留，请先备份再选择要继续的版本。</p><div class="account-actions"><button id="sqBackup">导出本机进度</button><button id="sqReconnect" class="primary">重新核对</button><button id="sqStayGuest">返回游客</button></div>`,false,true);
    this.bind('sqBackup',()=>exportSave());this.bind('sqReconnect',()=>this.connect());this.bind('sqStayGuest',()=>this.leaveAccount(true));
-  }else if(this.layer?.querySelector('#sqVerifyEmail,#sqChangePassword')){
+  }else if(this.layer?.querySelector('#sqVerifyEmail,#sqChangePassword,#sqSignUp,#sqRecover,#sqSignIn')){
    return;
   }else if(this.held){
    this.phase=this.uid?'offline':'guest';
    this.show('连接尚未完成',`<p>${this.h(message)}</p><p class="account-note">本机进度仍保留，可以重新核对，或退出账号返回游客。</p><div class="account-actions"><button id="sqReconnect" class="primary">重试连接</button><button id="sqBackup">导出本机进度</button><button id="sqStayGuest">返回游客</button></div>`,false,true);
    this.bind('sqReconnect',()=>this.connect());this.bind('sqBackup',()=>exportSave());this.bind('sqStayGuest',()=>this.leaveAccount(true));
-  }else if(this.uid){this.phase='offline';this.status();}
+  }else if(this.uid){this.phase='offline';if(e.transient)this.scheduleRetry();this.status();}
  },
  dashboard(){
   const p=this.player,email=this.api.session?.user.email||'';
-  this.show('账号与云存档',`<p><b>${this.h(p?.name||'餐厅店长')}</b><br><span class="account-note">${this.h(email)}</span></p><section class="account-progress"><strong>${this.phase==='online'?(this.dirty?'本机已存 · 待同步':'云端已同步'):'云端尚未确认'}</strong><small>云端序号 ${this.serverRevision}${this.lastAckRaw?' · '+this.h(new Date(JSON.parse(this.lastAckRaw).savedAt).toLocaleString()):''}</small></section><div class="account-actions"><button id="sqSync" class="primary">立即同步</button><button id="sqInbox">领取奖励${this.pendingCount?'（'+this.pendingCount+'）':''}</button><button id="sqHistory">云端备份</button><button id="sqRename">修改昵称</button><button id="sqLogout">退出账号</button>${this.isAdmin?'<button id="sqAdmin">管理后台</button>':''}</div><p class="account-note">游客与每个账号的本机存档分别保存。换设备登录后，可核对并继续云端进度。</p>`);
+  this.show('账号与云存档',`<p><b>${this.h(p?.name||'餐厅店长')}</b><br><span class="account-note">${this.h(email)}</span></p><section class="account-progress"><strong id="sqCloudDetail">${this.phase==='online'?(this.dirty?'本机已存 · 待同步':'云端已同步'):'云端尚未确认'}</strong><small>云端序号 ${this.serverRevision}${this.lastAckRaw?' · '+this.h(new Date(JSON.parse(this.lastAckRaw).savedAt).toLocaleString()):''}</small></section><div class="account-actions"><button id="sqSync" class="primary">立即同步</button><button id="sqInbox">领取奖励${this.pendingCount?'（'+this.pendingCount+'）':''}</button><button id="sqHistory">云端备份</button><button id="sqRename">修改昵称</button><button id="sqLogout">退出账号</button>${this.isAdmin?'<button id="sqAdmin">管理后台</button>':''}</div><p class="account-note">游客与每个账号的本机存档分别保存。换设备登录后，可核对并继续云端进度。</p>`);
   if(manualSaveMode){
    this.layer.querySelector('.account-progress strong').textContent=this.phase==='online'&&!this.dirty?'云端已同步':'本次页面 · 云端待确认';
    const note=document.createElement('p');note.className='account-note';note.textContent='当前环境不能在本机自动保存。云端尚未确认的进度仅在本次页面保留，离开前请导出或复制备份。';document.getElementById('sqAccountBody').append(note);
   }
-  this.bind('sqSync',async()=>{if(this.phase!=='online'){await this.connect();return;}saveGame();await this.flush();this.dashboard();this.note('云存档已更新');});
+  this.bind('sqSync',async()=>{if(this.phase!=='online'){await this.connect();return;}saveGame();await this.flush();this.dashboard();this.note(this.dirty?'当前进度已提交，后续操作继续同步':'云存档已更新');});
   this.bind('sqInbox',()=>this.inbox());this.bind('sqHistory',()=>this.history());this.bind('sqRename',()=>this.renameForm());this.bind('sqLogout',()=>this.logoutForm());
   this.bind('sqAdmin',()=>{window.open(new URL('./admin.html',location.href).href,'_blank','noopener');});
  },
@@ -5429,7 +5511,7 @@ window.SQAccounts={
   this.bind('sqLogoutLocal',()=>this.leaveAccount(true));this.bind('sqBack',()=>this.dashboard());
  },
  async leaveAccount(clearAuth){
-  clearTimeout(this.timer);if(this.uploading)await this.uploading.catch(()=>{});
+  clearTimeout(this.timer);this.timer=null;this.clearRetry();if(this.uploading)await this.uploading.catch(()=>{});
   if(this.uid&&gameLoaded&&!saveReadBlocked){this.suppress=true;saveGame();this.suppress=false;}
   this.persistMeta();releaseSaveLease();
   try{if(this.lease)await this.api.rpc('sq_release',{p_client_id:this.client,p_epoch:this.epoch});}catch(e){}
@@ -5439,7 +5521,7 @@ window.SQAccounts={
   if(this.held)this.previousBlocked=saveReadBlocked;this.close();this.status();this.note('已回到游客餐厅');
  },
  releaseOnExit(){
-  if(!this.uid||!this.api.session||!this.lease)return;
+  if(!this.uid||!this.api.session||!this.lease||this.dirty||this.uploading)return;
   fetch(this.api.url+'/rest/v1/rpc/sq_release',{method:'POST',headers:{'apikey':this.api.key,'Authorization':'Bearer '+this.api.session.access_token,'Content-Type':'application/json'},body:JSON.stringify({p_client_id:this.client,p_epoch:this.epoch}),keepalive:true,credentials:'omit'}).catch(()=>{});
  },
  cleanExport(clone){
