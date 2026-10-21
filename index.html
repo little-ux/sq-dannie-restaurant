@@ -1336,7 +1336,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <div class="account-entry"><span id="sqAccountStatus" class="account-status">游客 · 本机存档</span><button id="sqAccountEntry" onclick="SQAccounts.open()">登录／注册</button></div>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.3</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.4</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1425,7 +1425,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.2.3';
+const GAME_VERSION = '1.2.4';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -2223,7 +2223,7 @@ function findRecipe(A, B){
 function recipeOutLevel(r,A,B){return A&&B&&Number.isInteger(A.level)&&A.level===B.level&&A.level>=1&&A.level<=MAX_LV?A.level:0;}
 // 某物品当前是否可做（基础食材需已解锁；菜品递归展开，所需原料等级 <= 12）
 function canMake(id,lv){
- if(lv<1||lv>MAX_LV)return false;if(id<100){const it=itemInfo(id);return !!(it&&it.unlocked);}
+ if(lv<1||lv>MAX_LV||lv<minimumFoodLevel(id))return false;if(id<100){const it=itemInfo(id);return !!(it&&it.unlocked);}
  const r=recipeByOut[id];return !!r&&lifeRecipeUnlocked(r)&&recipeParts(r).every(p=>canMake(p[0],recipeInputLevel(p,lv,r)));
 }
 
@@ -2332,7 +2332,7 @@ function sameFood(food,req){return !!food&&food.itemId===req.id&&food.level===re
 function isFreeCell(index){return index>=0&&index<gridSize+tempAdd&&!grid[index];}
 
 function pendingOrderRequirements(order){return order.req;}
-function deliveryPlan(order){return order&&!order.done?planFoods(order.req,grid,true):null;}
+function deliveryPlan(order){return order&&!order.done?planFoods(order.req,grid):null;}
 
 function normalizeRestaurant(raw,state){
   const value=raw&&typeof raw==='object'?raw:{},roster=state.regularRoster,next=createRestaurantState(roster);
@@ -2796,7 +2796,7 @@ function orderProfile(){
  return {progress,slots,ceiling:Math.min(MAX_LV,3+Math.floor((cLv-1)/2)),energyBudget:Math.floor(maxStamina*(.62+.28*progress)),spaceBudget:Math.max(3,Math.min(slots-2,Math.floor(slots*.75))),cache:new Map()};
 }
 function orderWork(id,lv,cache=new Map(),seen=new Set()){
- if(!Number.isInteger(lv)||lv<1||lv>MAX_LV||seen.has(id))return null;
+ if(!Number.isInteger(lv)||lv<1||lv>MAX_LV||seen.has(id)||lv<minimumFoodLevel(id))return null;
  const key=id+':'+lv;if(cache.has(key))return cache.get(key);
  let result=null;
  if(id<100){const g=gens.find(g=>g.itemId===id),it=itemInfo(id);if(g?.unlocked&&it?.unlocked){const start=Math.min(g.lv,lv),depth=lv-start;result={energy:energyCost(start)*Math.pow(2,depth),space:depth+1};}}
@@ -3587,7 +3587,7 @@ function dailyCandidateIds(){
   const ids=['puzzles','service'];
   if(items.filter(it=>it.unlocked).length>=2)ids.push('cook');
   if(activeRegulars().length)ids.push('guests');
-  if(restaurant.signatures.active.some(id=>feasibleOrder(id,1)))ids.push('signatures');
+  if(restaurant.signatures.active.some(id=>feasibleOrder(id,minimumFoodLevel(id))))ids.push('signatures');
   if(lifeWeekend()&&marketOffers().some(o=>!life.market.bought.includes(o.id)&&(!o.reward.decor||!life.decor.owned.includes(o.reward.decor))&&o.req.every(r=>feasibleOrder(r.id,r.lv))))ids.push('market');
   return ids;
 }
@@ -3848,8 +3848,9 @@ function tryDishOrder(profile=orderProfile(),allowHigh=!orders.some(o=>!o.done&&
  return makeOrder([{id:chosen.id,lv}],{dish:true,signatureSpecial:specials.some(c=>c.id===chosen.id)});
 }
 function fillOrders(){
+ const existingCount=orders.length;
  let guard=0;while(orders.length<3&&guard++<80){const o=tryGenOrder();if(o&&orderFits(o.req))orders.push(o);}
- if(!orders.some(o=>o.dish)){const dish=tryDishOrder();if(dish){if(orders.length>=3)orders.pop();orders.push(dish);}}
+ if(orders.length>existingCount&&!orders.some(o=>o.dish)){const dish=tryDishOrder();if(dish){if(orders.length>=3)orders.pop();orders.push(dish);}}
  if(!orders.length){const p=orderProfile(),it=items.find(it=>it.unlocked&&orderLevelOptions(it.id,p,false).length);if(it)orders.push(makeOrder([{id:it.id,lv:2}]));}
 }
 function genOrders(){orders=[];fillOrders();}
@@ -3993,7 +3994,7 @@ function render(){
   // 统计当前未完成订单还需要的物品（数量精确，逐格匹配）
   const neededIndices=new Set();
   const remaining=orders.filter(o=>!o.done).flatMap(pendingOrderRequirements).sort((a,b)=>b.lv-a.lv);
-  remaining.forEach(req=>{const choices=grid.map((food,i)=>({food,i})).filter(x=>!neededIndices.has(x.i)&&x.food&&x.food.itemId===req.id&&x.food.level>=req.lv).sort((a,b)=>a.food.level-b.food.level||a.i-b.i);if(choices.length)neededIndices.add(choices[0].i);});
+  remaining.forEach(req=>{const choices=grid.map((food,i)=>({food,i})).filter(x=>!neededIndices.has(x.i)&&x.food&&sameFood(x.food,req)).sort((a,b)=>a.food.level-b.food.level||a.i-b.i);if(choices.length)neededIndices.add(choices[0].i);});
 
   const ge = document.getElementById('grid');
   ge.innerHTML = '';
@@ -4396,7 +4397,7 @@ function recipeFlow(parts,id,lv){
   return `<div class="recipe-flow"><div class="recipe-flow-label">所需材料 · ${parts.length}种</div><div class="recipe-inputs">${parts.map(p=>`<div class="recipe-input">${pathFood(p[0],p[1])}</div>`).join('')}</div><div class="recipe-result"><span class="recipe-result-label">↓ 合成结果</span>${pathFood(id,lv)}</div></div>`;
 }
 function fitsRecipe(id,lv,seen=new Set()){
- if(lv<1||lv>MAX_LV||seen.has(id))return false;if(id<100)return !!itemInfo(id);
+ if(lv<1||lv>MAX_LV||seen.has(id)||lv<minimumFoodLevel(id))return false;if(id<100)return !!itemInfo(id);
  const r=recipeByOut[id];if(!r)return false;const next=new Set(seen);next.add(id);
  return recipeParts(r).every(p=>fitsRecipe(p[0],recipeInputLevel(p,lv,r),next));
 }
@@ -4423,7 +4424,7 @@ function craftPath(id,lv,quantity=1,seen=new Set(),expanded=true){
  const r=recipeByOut[id];if(!r||seen.has(id))return '<div class="path-note">暂无可用菜谱。</div>';
  const next=new Set(seen);next.add(id);const result=Math.max(lv,minimumFoodLevel(id)),parts=recipeParts(r).map(p=>[p[0],recipeInputLevel(p,result,r)]);
  let h=`<details class="path-node dish-path" ${expanded?'open':''}><summary>${dishes[id].name} L${result} × ${quantity}</summary>${recipeFlow(parts,id,result)}`;
- h+=`<div class="path-note">${'在棋盘上选择两份材料合成。'+(r.minLv?'餐厅Lv'+r.minLv+'解锁。':'')}材料必须同等级，成品保持该等级。${result>lv?'本配方最低产出L'+result+'，可直接交付较低等级订单。':''}</div>`;
+ h+=`<div class="path-note">${'在棋盘上选择两份材料合成。'+(r.minLv?'餐厅Lv'+r.minLv+'解锁。':'')}材料必须同等级，成品保持该等级。${result>lv?'本配方最低产出L'+result+'，不能制作L'+lv+'；订单只接受指定等级。':''}</div>`;
  h+='<p class="path-branch-caption">材料制作步骤 · 点击展开</p><div class="path-branches">'+parts.map(p=>craftPath(p[0],p[1],quantity,next,false)).join('')+'</div>';
  return h+'</details>';
 }
@@ -4454,8 +4455,8 @@ function openOrder(idx){
   const title=o.surprise?'🎁惊喜订单':o.signatureSpecial?'🌟招牌专属订单':o.high?'⭐大餐订单':o.dish?'🍽️菜品订单':o.complex?'🍱套餐订单':'食客订单';
   document.getElementById('omTitle').textContent=(customer?customer.name+' · ':'')+title+(o.done?'（已完成）':'');
   let h=orderRestaurantPanel(o);
-  h+=o.req.map((r,i)=>`<div class="om-req"><button class="req-path-link" onclick="openFoodPath(${idx},${i})">${evo(r.id,r.lv).emoji}<span>${evo(r.id,r.lv).name} L${r.lv}</span><span class="arrow">查看路径 ›</span></button><div class="path-stock">${'棋盘现有 '+grid.filter(it=>it&&it.itemId===r.id&&it.level>=r.lv).length+' 个'}</div></div>`).join('');
-  h+='<p class="path-note">点击食物查看合成步骤；同款更高等级也可交付，优先使用最低可用等级。</p>'+(collectionBenefits().count?'<p class="path-note">奖励已含餐厅收藏加成；连单奖励在交付时另计。</p>':'')+surpriseOrderPanel(o);
+  h+=o.req.map((r,i)=>`<div class="om-req"><button class="req-path-link" onclick="openFoodPath(${idx},${i})">${evo(r.id,r.lv).emoji}<span>${evo(r.id,r.lv).name} L${r.lv}</span><span class="arrow">查看路径 ›</span></button><div class="path-stock">${'棋盘同等级 '+grid.filter(it=>sameFood(it,r)).length+' 个'}</div></div>`).join('');
+  h+='<p class="path-note">点击食物查看合成步骤；食物种类和等级必须与订单一致，高于或低于指定等级均不可交付。</p>'+(collectionBenefits().count?'<p class="path-note">奖励已含餐厅收藏加成；连单奖励在交付时另计。</p>':'')+surpriseOrderPanel(o);
   document.getElementById('omBody').innerHTML=h;
   document.getElementById('omReward').textContent=`奖励：+${bonusGold(o.rw)}💰　+${bonusExp(o.exp)}经验${customer&&!o.done?' · 交付积累好感':''}`;
   const btn=document.getElementById('omDeliverBtn'),ready=orderReady(idx)&&!o.done;
@@ -4464,7 +4465,7 @@ function openOrder(idx){
 }
 function deliver(idx){
  if(!Number.isInteger(idx))return;const o=orders[idx];if(!o||o.done)return;const plan=deliveryPlan(o);
- if(!plan){toast('缺少食材，点击食物查看路径','err');return;}
+ if(!plan){toast('请备齐订单指定种类与等级的食物','err');return;}
  plan.indices.forEach(i=>grid[i]=null);selectedIdx=-1;ensureDaily();syncStamina();const now=Date.now();
  meta.combo=now-meta.lastDeliveryAt<=180000?Math.min(5,meta.combo+1):1;meta.lastDeliveryAt=now;
  const bonus=Math.floor(o.rw*Math.min(8,(meta.combo-1)*2)/100),reward=bonusGold(o.rw+bonus);
@@ -4635,6 +4636,7 @@ function drawDex(){
 }
 
 function openDexPath(id,lv){
+  lv=Math.max(lv,minimumFoodLevel(id));
   pathReturn='dex';closeModal('dexModal');document.getElementById('fpTitle').textContent=evo(id,lv).name+' · 合成路径';
   document.getElementById('foodPathBody').innerHTML=foodPathContent(id,lv);document.getElementById('pathBackButton').textContent='返回图谱';
   const modal=document.getElementById('foodPathModal');modal.style.display='block';modal.scrollTop=0;
