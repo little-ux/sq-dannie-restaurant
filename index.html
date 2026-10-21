@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-contrast="high">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
@@ -160,7 +160,7 @@ select{width:100%;padding:4px;border-radius:5px;border:1px solid var(--cell-bord
 .modal .close{display:block;width:100%;margin-top:10px;background:var(--primary);padding:11px;font-size:14px;}
 .dex-row{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid #ffe0c0;font-size:13px;}
 .recipe-row{display:flex;align-items:center;gap:5px;padding:6px 4px;border-bottom:1px solid #ffe0c0;font-size:12px;}
-.recipe-row .eq{color:var(--purple);font-weight:800;}
+.recipe-row .eq{color:var(--purple-ink,var(--purple));font-weight:800;}
 .ach{display:flex;justify-content:space-between;padding:8px;background:#fff;border-radius:6px;margin:5px 0;font-size:13px;}
 .ach.done{background:#e8f5e9;}
 
@@ -168,7 +168,7 @@ select{width:100%;padding:4px;border-radius:5px;border:1px solid var(--cell-bord
 .om-req{background:#fff8ee;border:1px solid #ffe0c0;border-radius:9px;padding:8px 10px;margin:6px 0;}
 .om-req .rhead{font-size:15px;font-weight:800;}
 .chain{font-size:13px;padding:2px 0;}
-.chain.bad{color:var(--danger);font-weight:700;}
+.chain.bad{color:var(--danger-ink,var(--danger));font-weight:700;}
 .chain-sub{font-size:12px;color:#8a7050;padding:2px 0 2px 10px;margin:3px 0 3px 6px;border-left:2px solid var(--cell-border);}
 .om-reward{text-align:center;font-weight:800;font-size:15px;color:#b04600;margin:9px 0 4px;}
 .install-step{background:#fff8ee;border-radius:9px;padding:9px 11px;margin:7px 0;font-size:13px;line-height:1.6;}
@@ -556,7 +556,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .gen-card .locked b,.gen-card .locked small{font-size:9px;}
 .gen-card .locked-food .food-icon{width:19px;height:19px;}
 .gen-card .locked button{padding:3px 5px;min-height:21px;font-size:9px;}
-.mini-action{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:25px;max-width:100%;padding:3px 8px;border:1px solid var(--line);border-radius:7px;background:var(--theme-soft,var(--soft));color:var(--primary);font-size:11px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;}
+.mini-action{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:25px;max-width:100%;padding:3px 8px;border:1px solid var(--line);border-radius:7px;background:var(--theme-soft,var(--soft));color:var(--primary-ink,var(--primary));font-size:11px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;}
 .mini-action:disabled{opacity:.45;cursor:default;}
 .panel h3>.mini-action{min-height:23px;padding:2px 7px;font-size:10px;}
 .upgrade-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);}
@@ -570,7 +570,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .btn-row>.shop-wide{flex-basis:100%;}
 .infinite-timer{font-size:10px;font-variant-numeric:tabular-nums;}
 .infinite-active{outline:1px solid var(--primary);}
-.infinite-note{padding:8px;border-radius:9px;background:var(--theme-soft,var(--soft));color:var(--primary);font-size:12px;}
+.infinite-note{padding:8px;border-radius:9px;background:var(--theme-soft,var(--soft));color:var(--primary-ink,var(--primary));font-size:12px;}
 .compact-tabs{display:flex;gap:5px;margin:8px 0;}
 .compact-tabs button{flex:1;min-width:0;border:1px solid var(--line);padding:6px 5px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:11px;white-space:nowrap;cursor:pointer;}
 .compact-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
@@ -587,7 +587,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .cooking-part>label{min-width:43px;font-size:11px;}
 .cooking-part>label small{display:block;font-size:10px;color:var(--muted);}
 .cooking-part select{flex:1;width:0;font-size:11px;}
-.cooking-output{display:flex;align-items:center;gap:8px;padding:12px 0;font-size:12px;color:var(--primary);}
+.cooking-output{display:flex;align-items:center;gap:8px;padding:12px 0;font-size:12px;color:var(--primary-ink,var(--primary));}
 .cooking-output>.food-icon{width:36px;height:36px;}
 .compact-dex-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
 .compact-dex-card{display:flex;align-items:center;gap:5px;min-width:0;text-align:left;padding:7px 5px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);cursor:pointer;}
@@ -598,7 +598,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .compact-dex-card.undiscovered{background:var(--theme-soft,var(--soft));}
 .compact-dex-card.undiscovered>.food-icon{opacity:.55;filter:saturate(.5);}
 .compact-pager{display:flex;justify-content:center;align-items:center;gap:14px;margin:13px 0 3px;font-size:11px;color:var(--muted);}
-.achievement-summary{font-size:13px;font-weight:650;color:var(--primary);}
+.achievement-summary{font-size:13px;font-weight:650;color:var(--primary-ink,var(--primary));}
 .ach small{display:block;margin-top:3px;font-size:10px;color:var(--muted);}
 .ach>span:last-child{font-size:10px;white-space:nowrap;}
 .ct-title>.food-icon{width:25px;height:25px;vertical-align:middle;}
@@ -623,7 +623,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .gen-lock-preview>.food-icon{width:17px;height:17px;flex:none;opacity:.65;}
 .gen-card.is-locked{background:var(--theme-surface);}
 .gen-card.is-locked .gen-name{color:var(--muted);}
-.gen-card .gen-unlock-trigger{background:var(--theme-soft);color:var(--primary);font-size:9px;}
+.gen-card .gen-unlock-trigger{background:var(--theme-soft);color:var(--primary-ink,var(--primary));font-size:9px;}
 .compact-dex-card{align-items:flex-start;white-space:normal;min-width:0;max-width:100%;gap:6px;padding:8px 6px;line-height:1.45;}
 .compact-dex-card>span{flex:1;min-width:0;max-width:100%;white-space:normal;}
 .compact-dex-card b,.compact-dex-card small{white-space:normal;overflow-wrap:anywhere;}
@@ -770,7 +770,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 
 /* Surprise gifts use the existing compact row; ready-order feedback takes priority. */
 #orderList .order.surprise-order:not(.ready){border-color:var(--theme-accent);box-shadow:inset 3px 0 0 var(--theme-accent);background:var(--theme-soft);}
-#orderList .order.surprise-order .order-kind{color:var(--primary);}
+#orderList .order.surprise-order .order-kind{color:var(--primary-ink,var(--primary));}
 .surprise-reward-panel{margin:10px 0;padding:9px;border:1px solid var(--theme-accent);border-radius:9px;background:var(--theme-soft);color:var(--text);}
 .surprise-reward-panel strong{display:block;font-size:13px;line-height:1.5;}
 .surprise-reward-panel p{margin-top:5px;font-size:12px;line-height:1.6;}
@@ -872,7 +872,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .growth-meter i{display:block;height:100%;border-radius:inherit;background:var(--success);}
 .growth-next{display:block;font-size:11.5px;line-height:1.5;color:var(--muted);}
 .regular-card blockquote{margin:8px 0;padding:7px 9px;border-left:2px solid var(--primary);border-radius:0 6px 6px 0;background:var(--theme-soft);font-size:12px;line-height:1.6;color:var(--text);}
-.regular-letters>summary{font-size:12px;color:var(--primary);cursor:pointer;line-height:1.7;}
+.regular-letters>summary{font-size:12px;color:var(--primary-ink,var(--primary));cursor:pointer;line-height:1.7;}
 .letter-note{margin-top:7px;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--theme-surface);}
 .letter-note>b{font-size:12px;}.letter-note p{font-size:12px;line-height:1.6;margin-top:3px;}
 .memento-choice{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:7px;font-size:11px;}
@@ -889,7 +889,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .signature-card{min-width:0;text-align:center;padding:9px 7px;margin-top:9px;border:1px solid var(--line);border-radius:10px;background:var(--panel);}
 .signature-card>b{display:block;margin:6px 0 3px;font-size:13px;line-height:1.5;overflow-wrap:anywhere;}
 .signature-card>small{display:block;font-size:11.5px;color:var(--muted);line-height:1.6;}
-.signature-rank{font-size:12px;color:var(--primary);}
+.signature-rank{font-size:12px;color:var(--primary-ink,var(--primary));}
 .signature-plate{position:relative;display:flex;align-items:center;justify-content:center;width:70px;height:70px;margin:0 auto;border:2px solid var(--line);border-radius:50%;background:var(--theme-surface);box-shadow:inset 0 0 0 4px var(--panel);}
 .signature-plate>.food-icon{width:51px;height:51px;}
 .plate-tier-1{border:3px double #a4adb5;box-shadow:inset 0 0 0 4px var(--panel),0 1px 4px rgba(80,90,100,.15);}
@@ -910,7 +910,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .tray-board-label{font-size:7px;line-height:1.1;color:var(--muted);}
 .tray-board-foods{display:flex;align-items:center;justify-content:center;gap:0;line-height:1;}
 .tray-board-foods>.food-icon{width:17px;height:17px;}
-.tray-board-item small{font-size:7px;line-height:1.1;color:var(--primary);}
+.tray-board-item small{font-size:7px;line-height:1.1;color:var(--primary-ink,var(--primary));}
 .tray-management,.tray-order-choice{padding:10px;margin:8px 0;border:1px solid var(--line);border-radius:9px;background:var(--panel);}
 .tray-management>b,.tray-order-choice>b{display:block;font-size:12px;line-height:1.6;}
 .tray-management>small{display:block;font-size:12px;line-height:1.6;color:var(--muted);}
@@ -943,7 +943,7 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse at top 
 .life-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;}
 .life-actions>button{font-size:12px;padding:7px 9px;max-width:100%;}
 .life-history{margin:12px 0;font-size:12px;line-height:1.7;}
-.life-history>summary{cursor:pointer;color:var(--primary);font-size:12px;}
+.life-history>summary{cursor:pointer;color:var(--primary-ink,var(--primary));font-size:12px;}
 .life-story{font-size:13px;line-height:1.9;padding:9px 0;overflow-wrap:anywhere;}
 article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(--theme-soft);}
 .life-story small{display:block;font-size:11.5px;line-height:1.6;color:var(--muted);margin-top:8px;}
@@ -1122,7 +1122,7 @@ article.life-story{padding:10px;margin-top:7px;border-radius:8px;background:var(
 .life-decor.placed{box-shadow:inset 0 0 0 1px var(--theme-accent);}.life-locked-decor .furniture-v105{opacity:.9;}
 
 .save-safety-banner{display:flex;justify-content:center;align-items:center;gap:6px;font-size:11px;line-height:1.5;color:var(--muted);margin:2px 0 5px;flex-wrap:wrap}.save-safety-banner[hidden]{display:none}.save-safety-banner button{padding:3px 7px;font-size:11px;background:var(--theme-soft);color:var(--theme-accent);border:1px solid var(--line);border-radius:6px}
-.save-safety-gate{position:fixed;inset:0;z-index:10000;background:#39392edb;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}.save-safety-gate[hidden]{display:none}.save-gate-panel{box-sizing:border-box;max-height:92vh;max-height:92dvh;overflow:auto;width:100%;max-width:440px;padding:15px;background:var(--panel);color:var(--text);border-radius:14px;overscroll-behavior:contain}.save-gate-panel h3{font-size:17px;margin:0 0 10px}.save-gate-note{font-size:13px;line-height:1.6;background:var(--theme-soft);padding:9px;border-radius:8px}.save-candidate{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;font-size:14px}.save-candidate p{font-size:13px;color:var(--muted);line-height:1.6;margin:6px 0}.save-candidate>div{display:grid;grid-template-columns:1fr 1fr;gap:7px}.save-candidate button,.save-gate-wide,.save-gate-new{min-height:38px;border:1px solid var(--line);border-radius:7px;font-size:13px;color:var(--theme-accent);background:var(--theme-soft);padding:7px}.save-candidate button:disabled{opacity:.45}.save-gate-wide{display:block;width:100%;margin:8px 0}.save-gate-new{display:block;margin:17px auto 0;color:var(--muted);background:transparent}.save-error{color:var(--danger)!important;overflow-wrap:anywhere}[inert]{pointer-events:none}
+.save-safety-gate{position:fixed;inset:0;z-index:10000;background:#39392edb;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}.save-safety-gate[hidden]{display:none}.save-gate-panel{box-sizing:border-box;max-height:92vh;max-height:92dvh;overflow:auto;width:100%;max-width:440px;padding:15px;background:var(--panel);color:var(--text);border-radius:14px;overscroll-behavior:contain}.save-gate-panel h3{font-size:17px;margin:0 0 10px}.save-gate-note{font-size:13px;line-height:1.6;background:var(--theme-soft);padding:9px;border-radius:8px}.save-candidate{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;font-size:14px}.save-candidate p{font-size:13px;color:var(--muted);line-height:1.6;margin:6px 0}.save-candidate>div{display:grid;grid-template-columns:1fr 1fr;gap:7px}.save-candidate button,.save-gate-wide,.save-gate-new{min-height:38px;border:1px solid var(--line);border-radius:7px;font-size:13px;color:var(--theme-accent);background:var(--theme-soft);padding:7px}.save-candidate button:disabled{opacity:.45}.save-gate-wide{display:block;width:100%;margin:8px 0}.save-gate-new{display:block;margin:17px auto 0;color:var(--muted);background:transparent}.save-error{color:var(--danger-ink,var(--danger))!important;overflow-wrap:anywhere}[inert]{pointer-events:none}
 
 .expense-confirm-open{overflow:hidden;}
 .expense-confirm-layer{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px 14px;background:rgba(35,37,31,.48);overscroll-behavior:contain;}
@@ -1212,7 +1212,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 .account-entry{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:9px;margin-top:8px;font-size:13px;}
 .account-entry button{min-height:30px;padding:5px 10px;white-space:nowrap;}
 .account-status{color:var(--muted);font-size:12px;}
-.account-status.has-reward{color:var(--danger);font-weight:700;}
+.account-status.has-reward{color:var(--danger-ink,var(--danger));font-weight:700;}
 .account-has-reward{position:relative;}.account-has-reward:after{content:'';position:absolute;right:0;top:0;width:6px;height:6px;background:var(--danger);border-radius:50%;}
 .account-layer{position:fixed;inset:auto;left:var(--viewport-left,0px);top:var(--viewport-top,0px);width:var(--viewport-width,100vw);height:var(--viewport-height,100vh);z-index:214000;display:flex;align-items:center;justify-content:center;padding:max(14px,var(--safe-top)) max(14px,var(--safe-right)) max(14px,var(--safe-bottom)) max(14px,var(--safe-left));background:#292c2b99;}
 .account-layer[hidden]{display:none;}
@@ -1227,7 +1227,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 .account-actions button{flex:1;min-width:90px;min-height:38px;white-space:nowrap;padding:7px 10px;font-size:14px;border:1px solid var(--line);border-radius:9px;background:var(--theme-soft);color:var(--text);}
 .account-actions .primary{background:var(--primary);color:#fff;}
 .account-card button:disabled{opacity:.5;}
-.account-error{color:var(--danger);font-size:13px;white-space:pre-wrap;}
+.account-error{color:var(--danger-ink,var(--danger));font-size:13px;white-space:pre-wrap;}
 .account-note{color:var(--muted);font-size:13px;margin:7px 0;}
 .account-progress{padding:10px;border:1px solid var(--line);border-radius:10px;margin:9px 0;background:var(--theme-surface);}
 .account-progress strong{display:block;}
@@ -1240,6 +1240,38 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 
 
 .cell:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+
+
+/* High contrast changes colors and outlines, never component dimensions. */
+html[data-contrast="high"]{
+ --bg:#ede9de;--panel:#fffdf8;--text:#2e352b;--muted:#4d5849;--line:#6f7868;
+ --primary:#8a3f28;--success:#375d3c;--info:#31585c;--purple:#5d466d;--danger:#843d35;
+}
+.settings-contrast{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:9px;margin-top:9px;}
+.settings-contrast>label{flex:none;font-size:13px;font-weight:650;}
+.settings-contrast>select,.settings-contrast>.inline-select{flex:1;min-width:0;margin:0;}
+html[data-contrast="high"] .cell{border-color:var(--line);}
+html[data-contrast="high"] .cell.selected{border-color:var(--primary-ink);}
+html[data-contrast="high"] .cell.merge-target{border-color:var(--success-ink);}
+html[data-contrast="high"] .cell.recipe-target{border-color:var(--purple-ink);}
+html[data-contrast="high"] .cell.order-match{border-color:var(--theme-accent);}
+html[data-contrast="high"] .item .lv{opacity:1;}
+html[data-contrast="high"] .lv-trigger{background:var(--theme-surface);color:var(--text);border-color:var(--line);}
+html[data-contrast="high"] .modal-x,html[data-contrast="high"] .help-button{color:var(--text);}
+html[data-contrast="high"] #orderList .order.done{opacity:1;}
+html[data-contrast="high"] #orderList .order-done{color:var(--success-ink);}
+html[data-contrast="high"] .ready-badge{background:var(--success);color:#fff;}
+html[data-contrast="high"] .btn-amber{background:#86500c;color:#fff;}
+html[data-contrast="high"] button:disabled{opacity:1;background:var(--theme-surface);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line);cursor:default;}
+html[data-contrast="high"] .inline-select summary[aria-disabled="true"]{opacity:1;color:var(--muted);}
+html[data-contrast="high"] .combo-tip .ct-title{color:var(--purple-ink);}
+html[data-contrast="high"] .combo-tip .ct-row.ok{color:var(--success-ink);}
+html[data-contrast="high"] .combo-tip .ct-row.lock{color:var(--muted);}
+html[data-contrast="high"] .combo-tip button.discard-food{background:var(--danger);color:#fff;}
+html[data-contrast="high"] .release-badge{color:var(--success-ink);background:var(--theme-soft2);}
+html[data-contrast="high"] .gen-btn{box-shadow:inset 0 0 0 1px var(--line);}
+html[data-contrast="high"][data-theme="night"] :is(.btn-orange,.btn-green,.btn-blue,.btn-purple,.btn-red,.theme-buy-button,.reward){box-shadow:inset 0 0 0 1px var(--line);}
+html[data-contrast="high"] :focus-visible{outline:2px solid var(--theme-accent);outline-offset:2px;}
 </style>
 </head>
 <body>
@@ -1330,13 +1362,14 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" style="display:none;">
   <div class="modal-head"><h3 id="settingsTitle">⚙设置</h3><button class="modal-x" onclick="closeModal('settingsModal')" aria-label="关闭设置">✕</button></div>
   <div class="btn-row"><button class="btn-blue" onclick="openSettingsSection('install')">📱安装游戏</button><button class="btn-green" onclick="openSettingsSection('save')">💾存档管理</button><button class="btn-purple" id="toggleEffects" onclick="toggleEffects()">✨特效：开</button><button class="btn-blue" onclick="openAudioSettings()">🎵音乐与音效</button><button class="btn-green" onclick="closeModal('settingsModal');openAch()">🏆成就收藏</button></div>
+  <div class="settings-contrast"><label for="contrastMode">画面对比度</label><select class="compact-select" id="contrastMode" onchange="setContrast(this.value)"><option value="high">高对比（默认）</option><option value="soft">柔和</option></select></div>
   <div class="settings-appearance"><span id="activeThemeLabel">当前装扮：奶油小馆</span></div>
   <div id="saveSafetyBanner" class="save-safety-banner" hidden><span id="saveStatus">本地存档 · 请备份</span><span id="saveHint">换文件前先导出</span><button onclick="exportPortableGame()">备份HTML</button></div>
   <p class="path-note" id="saveModeDescription">进度自动保存；换版本或设备可通过存档管理导出、导入。</p>
   <div class="account-entry"><span id="sqAccountStatus" class="account-status">游客 · 本机存档</span><button id="sqAccountEntry" onclick="SQAccounts.open()">登录／注册</button></div>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.4</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.5</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1425,7 +1458,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.2.4';
+const GAME_VERSION = '1.2.5';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -2192,7 +2225,7 @@ function chip(id, lv){
   const isDish = !!dishes[id];
   const badge = isDish ? '🌟' : id;
   const color = isDish ? '#786c80' : (seriesColors[id] || '#999');
-  return `<span class="ochip" style="background:${color}">${badge}</span>${info.emoji}<span class="chip-name">${info.name}</span><span>L${lv}</span>`;
+  return `<span class="ochip" style="background:${color};color:${badgeTextColor(color)}">${badge}</span>${info.emoji}<span class="chip-name">${info.name}</span><span>L${lv}</span>`;
 }
 
 // 物品信息
@@ -3147,7 +3180,7 @@ let gens = items.map(it=>({id:it.id,itemId:it.id,lv:1,upCost:genUpgradeCost(it.i
 
 let gridSize = 14, tempAdd = 0;
 let slotPurchases = 0;
-let appearance = {theme:'cream',owned:['cream'],effects:true,...DEFAULT_AUDIO};
+let appearance = {theme:'cream',owned:['cream'],effects:true,contrast:'high',...DEFAULT_AUDIO};
 let gold = 100, stamina = BASE_STAMINA, maxStamina = BASE_STAMINA, staUpCost = staminaUpgradePrice(BASE_STAMINA), slotCost = slotPrice(0);
 const BUY_STA_BASE_COST = 200, BUY_STA_STEP = 200, BUY_STA_AMT = 20;
 let grid = Array(gridSize).fill(null);
@@ -3385,7 +3418,7 @@ function normalizeState(raw){
   n.slotPurchases=integer(d.slotPurchases,Math.max(0,n.gridSize-(d.boardRules>=2?14:18)),0,58);
   const a=d.appearance||{},known=new Set(THEMES.map(t=>t.id));
   const owned=[...new Set(['cream',...(Array.isArray(a.owned)?a.owned.filter(id=>known.has(id)):[])])];
-  n.appearance={theme:owned.includes(a.theme)?a.theme:'cream',owned,effects:a.effects!==false,...normalizeAudioPrefs(a)};
+  n.appearance={theme:owned.includes(a.theme)?a.theme:'cream',owned,effects:a.effects!==false,contrast:a.contrast==='soft'?'soft':'high',...normalizeAudioPrefs(a)};
   const validFood=it=>it===null||(it&&Number.isInteger(it.itemId)&&itemInfo(it.itemId)&&Number.isInteger(it.level)&&it.level>=1&&it.level<=MAX_LV);
   if(!d.grid.every(validFood)||d.grid.slice(n.gridSize+n.tempAdd).some(Boolean))throw new Error('存档棋盘内容无效。');
   n.grid=d.grid.slice(0,n.gridSize+n.tempAdd).map(it=>it?{itemId:it.itemId,level:it.level}:null);
@@ -4010,7 +4043,7 @@ function render(){
       const isDish = !!dishes[it.itemId];
       const badge = isDish ? '🌟' : String(it.itemId);
       const badgeColor = isDish ? '#786c80' : (seriesColors[it.itemId] || '#999');
-      cell.innerHTML = `<div class="item ${cls}"><span class="badge" style="background:${badgeColor}">${badge}</span><span class="emoji">${info.emoji}</span><span class="lv">L${it.level}${activeSignature(it.itemId)?'<span class="signature-food-star">★</span>':''}</span></div>`;
+      cell.innerHTML = `<div class="item ${cls}"><span class="badge" style="background:${badgeColor};color:${badgeTextColor(badgeColor)}">${badge}</span><span class="emoji">${info.emoji}</span><span class="lv">L${it.level}${activeSignature(it.itemId)?'<span class="signature-food-star">★</span>':''}</span></div>`;
       if(neededIndices.has(i))cell.classList.add('order-match');
       if(i === selectedIdx) cell.classList.add('selected');
       if(selectedIdx >= 0 && selectedIdx !== i){
@@ -4743,7 +4776,21 @@ const THEMES=[
  {id:'night',name:'星夜食堂',symbol:'✦',price:6800,effect:'star',effectName:'星河闪耀',desc:'深靛蓝、暖金与明亮食物卡，合成时点亮星光。',colors:{bg:'#1d2539',panel:'#293249',text:'#f2ebdf',muted:'#c2bbca',line:'#46516a',surface:'#333d55',board:'#171f31',cell:'#e7e8ed',empty:'#252e44',primary:'#916a4f',success:'#567d7a',info:'#687e9e',purple:'#887498',danger:'#a16972',accent:'#d2b988',status:'#b7d6be',level:'#d7c7e7',soft:'#3f4058',soft2:'#304754',foodLow:'#e3e5ef',foodMid:'#ccd1e3',foodHigh:'#abb5d2',foodDish:'#d5cce4',foodInk:'#55596c'}},
  {id:'sunset',name:'落日海岸',symbol:'🌅',price:9600,effect:'bubble',effectName:'海风泡泡',desc:'落日桃色与海岸青蓝，合成时升起透亮气泡。',colors:{bg:'#f7eee3',panel:'#fff9ef',text:'#725447',muted:'#8c715c',line:'#ead6ba',surface:'#fbf0e0',board:'#eadac4',cell:'#fffaf1',empty:'#f7eddd',primary:'#ad6751',success:'#6d856e',info:'#5e8794',purple:'#927783',danger:'#aa6759',accent:'#a97d49',status:'#6c8263',level:'#947187',soft:'#f5e2cd',soft2:'#e5ede2',foodLow:'#fff1dd',foodMid:'#f3dfba',foodHigh:'#dfbd97',foodDish:'#efdde1',foodInk:'#775b40'}}
 ];
-const THEME_VARS={bg:'--bg',panel:'--panel',text:'--text',muted:'--muted',line:'--line',surface:'--theme-surface',board:'--theme-board',cell:'--cell',empty:'--cell-empty',primary:'--primary',success:'--success',info:'--info',purple:'--purple',danger:'--danger',accent:'--theme-accent',status:'--theme-status',level:'--theme-level',soft:'--theme-soft',soft2:'--theme-soft2',foodLow:'--food-low',foodMid:'--food-mid',foodHigh:'--food-high',foodDish:'--food-dish',foodInk:'--food-ink'};
+const HIGH_CONTRAST_COLORS={"cream":{"bg":"#ede9de","panel":"#fffdf8","text":"#2e352b","muted":"#4d5849","line":"#6f7868","surface":"#f2eee3","board":"#d8ddce","cell":"#fffefa","empty":"#ecf0e4","primary":"#8a3f28","success":"#375d3c","info":"#31585c","purple":"#5d466d","danger":"#843d35","accent":"#6a511f","status":"#315235","level":"#534165","soft":"#e8decd","soft2":"#e0e9d8","foodInk":"#383c2c"},"sakura":{"bg":"#f1e3eb","panel":"#fffafd","text":"#482d40","muted":"#68475c","line":"#866475","surface":"#f4e7ee","primary":"#843f64","success":"#395c41","info":"#415874","purple":"#694875","danger":"#873b48","accent":"#71415d","status":"#70425e","level":"#654276","foodInk":"#473240"},"mint":{"bg":"#e1ebdf","panel":"#fbfff8","text":"#233e2e","muted":"#43604d","line":"#647b67","surface":"#eaf2e3","primary":"#3c6343","success":"#2b634c","info":"#2e5b5c","purple":"#535776","danger":"#843f32","accent":"#44602a","status":"#2d533b","level":"#4c576d","foodInk":"#2b402d"},"night":{"bg":"#101828","panel":"#202b40","text":"#fff9ed","muted":"#d8deed","line":"#a5b4cc","surface":"#25334c","board":"#0c1426","cell":"#f2f3fa","empty":"#202b43","primary":"#905a3b","success":"#3b6858","info":"#405e80","purple":"#6c5384","danger":"#914754","accent":"#f0c78e","status":"#d3f8d8","level":"#eadbff","soft":"#343950","soft2":"#273e3c","foodInk":"#29334b"},"sunset":{"bg":"#f2e5d6","panel":"#fffcf5","text":"#4f3225","muted":"#6c4a35","line":"#876952","surface":"#f7ead7","primary":"#8b422f","success":"#3e6041","info":"#315f70","purple":"#6c4a5d","danger":"#873d34","accent":"#70501f","status":"#3b5830","level":"#65465c","foodInk":"#493423"}};
+function themeColors(theme,mode=appearance.contrast){
+ const colors={...theme.colors};
+ if(mode!=='soft')Object.assign(colors,HIGH_CONTRAST_COLORS[theme.id]||HIGH_CONTRAST_COLORS.cream);
+ const nightInk={primary:'#f3c89f',success:'#bde7c9',info:'#c0def6',purple:'#e1cdf7',danger:'#ffc5cc'};
+ for(const key of ['primary','success','info','purple','danger'])colors[key+'Ink']=mode!=='soft'&&theme.id==='night'?nightInk[key]:colors[key];
+ return colors;
+}
+function badgeTextColor(hex){
+ if(appearance.contrast==='soft')return '#fff';
+ const rgb=hex.replace('#','').match(/../g).map(h=>parseInt(h,16)/255).map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));
+ return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#000':'#fff';
+}
+
+const THEME_VARS={primaryInk:'--primary-ink',successInk:'--success-ink',infoInk:'--info-ink',purpleInk:'--purple-ink',dangerInk:'--danger-ink',bg:'--bg',panel:'--panel',text:'--text',muted:'--muted',line:'--line',surface:'--theme-surface',board:'--theme-board',cell:'--cell',empty:'--cell-empty',primary:'--primary',success:'--success',info:'--info',purple:'--purple',danger:'--danger',accent:'--theme-accent',status:'--theme-status',level:'--theme-level',soft:'--theme-soft',soft2:'--theme-soft2',foodLow:'--food-low',foodMid:'--food-mid',foodHigh:'--food-high',foodDish:'--food-dish',foodInk:'--food-ink'};
 const TOOL_DETAILS={
  infinite:'使用后120秒内，发射食物不消耗体力；实际体力仍正常恢复。关闭网页也会继续倒计时。效果生效中不能重复使用，不会消耗第二张。购买后进入背包，需手动使用。',
  speed:'立即将体力补充至当前上限。体力无需补充时不会消耗加速卡。',
@@ -4756,10 +4803,10 @@ function currentTheme(){return THEMES.find(t=>t.id===appearance.theme)||THEMES[0
 function reducedMotion(){return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}
 function effectsEnabled(){return appearance.effects&&!reducedMotion();}
 function applyAppearance(){
-  const t=currentTheme();document.documentElement.dataset.theme=t.id;
-  Object.entries(THEME_VARS).forEach(([key,variable])=>document.documentElement.style.setProperty(variable,t.colors[key]));
+  const t=currentTheme(),colors=themeColors(t);document.documentElement.dataset.theme=t.id;document.documentElement.dataset.contrast=appearance.contrast==='soft'?'soft':'high';
+  Object.entries(THEME_VARS).forEach(([key,variable])=>document.documentElement.style.setProperty(variable,colors[key]));
   document.documentElement.classList.toggle('effects-off',!effectsEnabled());
-  const metaTag=document.querySelector('meta[name="theme-color"]');if(metaTag)metaTag.content=t.colors.bg;
+  const metaTag=document.querySelector('meta[name="theme-color"]');if(metaTag)metaTag.content=colors.bg;
   applyAudioPreferences();
   if(!effectsEnabled()){const layer=document.getElementById('fxLayer');if(layer)layer.replaceChildren();}
   updateSettingsUi();
@@ -4772,6 +4819,7 @@ function updateSettingsUi(){
   if(fx){fx.textContent='✨特效：'+(appearance.effects?(reducedMotion()?'精简':'开'):'关');fx.setAttribute('aria-pressed',appearance.effects);}
   if(sound){sound.textContent=(appearance.sound?'🔊':'🔇')+'总声音：'+(appearance.sound?'开':'关');sound.setAttribute('aria-pressed',appearance.sound);}
   if(label)label.textContent='当前装扮：'+currentTheme().name;
+  const contrast=document.getElementById('contrastMode');if(contrast&&contrast.value!==appearance.contrast){contrast.value=appearance.contrast;scheduleInlineSelects();}
   updateAudioUi();
 }
 function openSettings(){updateSettingsUi();document.getElementById('settingsModal').style.display='block';fitControls();}
@@ -4780,6 +4828,10 @@ function openSettingsSection(kind){
   if(kind==='install')openInstall();else openSave();
 }
 function backToSettings(id){document.getElementById(id).style.display='none';openSettings();}
+function setContrast(mode){
+ if(!['high','soft'].includes(mode)||mode===appearance.contrast)return;
+ appearance.contrast=mode;applyAppearance();render();saveGame();sfx('select');
+}
 function toggleEffects(){appearance.effects=!appearance.effects;applyAppearance();saveGame();}
 function toggleSound(){appearance.sound=!appearance.sound;applyAppearance();saveGame();if(appearance.sound)sfx('click');}
 function openToolInfo(key){
@@ -4795,7 +4847,8 @@ function openThemeShop(){
 }
 function renderThemeShelf(){
   const shelf=document.getElementById('themeShelf');if(!shelf)return;
-  shelf.innerHTML=THEMES.map(t=>{
+  shelf.innerHTML=THEMES.map(theme=>{
+    const t={...theme,colors:themeColors(theme)};
     const owned=appearance.owned.includes(t.id),active=appearance.theme===t.id;
     return `<article class="theme-card ${active?'active':''}"><div class="theme-mini" style="--preview-bg:${t.colors.bg};--preview-board:${t.colors.board};--preview-ink:${t.colors.text};--preview-accent:${t.colors.primary}"><span class="theme-preview-mark">${t.symbol}</span><div class="theme-mini-grid">${Array.from({length:7},()=>'<i></i>').join('')}</div></div><b>${t.name}</b><small>${t.effectName}${owned?' · 已拥有':''}</small><div class="theme-card-actions"><button class="theme-preview-button" onclick="previewTheme('${t.id}')">预览</button><button class="theme-buy-button" onclick="buyTheme('${t.id}')" ${active||(!owned&&gold<t.price)?'disabled':''}>${active?'使用中':owned?'使用':'购'+t.price+'💰'}</button></div></article>`;
   }).join('');
@@ -4808,7 +4861,7 @@ function buyTheme(id){
   toast((owned?'已换上':'已购买并换上')+t.name,'ok');
   const rect=document.getElementById('shopTitle').getBoundingClientRect();emitEffect('theme',rect.left+rect.width/2,rect.bottom+10,t.symbol);
 }
-function themeStyle(t){return Object.entries(THEME_VARS).map(([key,v])=>v+':'+t.colors[key]).join(';');}
+function themeStyle(t){const colors=themeColors(t);return Object.entries(THEME_VARS).map(([key,v])=>v+':'+colors[key]).join(';');}
 function previewTheme(id){
   const t=THEMES.find(t=>t.id===id);if(!t)return;previewThemeId=id;
   document.getElementById('themePreviewTitle').textContent=t.symbol+' '+t.name;
