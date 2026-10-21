@@ -5014,7 +5014,7 @@ function installInlineSelects(){
 /* Shared account transport. Public project key only; administrator checks live in SQL. */
 window.SQCloudAPI=class SQCloudAPI{
  constructor(config){
-  this.config=config||{};this.session=null;this.refreshing=null;this.memory=null;
+  this.config=config||{};this.session=null;this.refreshing=null;this.memory=null;this.pendingRedirect=null;
   this.url=String(this.config.url||'').trim().replace(/\/$/,'');this.key=String(this.config.publishableKey||'').trim();
   this.enabled=!!(this.url&&this.key);this.storageKey='sq.restaurant.auth';
   if(this.enabled){
@@ -5076,16 +5076,28 @@ window.SQCloudAPI=class SQCloudAPI{
  }
  async recover(email,redirect){return this.request('/auth/v1/recover?redirect_to='+encodeURIComponent(redirect),{body:{email:email.trim()}});}
  async changePassword(password){await this.refresh();return this.request('/auth/v1/user',{method:'PUT',body:{password},token:this.session.access_token});}
+ async verifyEmailCode(email,code,type){
+  if(!['signup','recovery'].includes(type))throw Error('请选择注册确认或找回密码');
+  const result=await this.request('/auth/v1/verify',{body:{email:email.trim(),token:code.trim(),type}});
+  return this.storeSession(result);
+ }
+ async resendSignup(email,redirect){return this.request('/auth/v1/resend?redirect_to='+encodeURIComponent(redirect),{body:{type:'signup',email:email.trim()}});}
  async acceptRedirect(){
   const h=new URLSearchParams(location.hash.slice(1));
-  if(h.has('error')||h.has('error_description')){history.replaceState(null,'',location.pathname+location.search);throw Error('登录链接已失效，请重新发送验证或重置邮件');}
-  if(!h.has('access_token'))return false;
-  const access=h.get('access_token'),refresh=h.get('refresh_token'),type=h.get('type');
-  history.replaceState(null,'',location.pathname+location.search);
-  if(!access||!refresh)throw Error('登录链接不完整，请重新登录');
-  const user=await this.request('/auth/v1/user',{method:'GET',token:access});
-  this.storeSession({access_token:access,refresh_token:refresh,expires_in:Number(h.get('expires_in'))||3600,user});
-  return type==='recovery';
+  if(h.has('error')||h.has('error_description')||h.has('error_code')){
+   this.pendingRedirect=null;history.replaceState(null,'',location.pathname+location.search);
+   throw Error('邮件验证链接已失效，请重新发送邮件，或填写邮件验证码');
+  }
+  if(h.has('access_token')){
+   this.pendingRedirect={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),type:h.get('type'),expires_in:Number(h.get('expires_in'))||3600};
+   history.replaceState(null,'',location.pathname+location.search);
+  }
+  const pending=this.pendingRedirect;
+  if(!pending)return false;
+  if(!pending.access_token||!pending.refresh_token){this.pendingRedirect=null;throw Error('邮件验证信息不完整，请重新发送邮件或填写验证码');}
+  const user=await this.request('/auth/v1/user',{method:'GET',token:pending.access_token});
+  this.storeSession({...pending,user});this.pendingRedirect=null;
+  return pending.type==='recovery';
  }
  async signOut(){try{if(this.session)await this.request('/auth/v1/logout?scope=local',{body:{},token:this.session.access_token});}finally{this.clearSession();}}
  static id(){if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((n,i)=>([4,6,8,10].includes(i)?'-':'')+n.toString(16).padStart(2,'0')).join('');}
@@ -5108,6 +5120,8 @@ window.SQAccounts={
  persistMeta(){if(!this.uid)return;try{this.base().setItem(this.metaKey(),JSON.stringify({revision:this.serverRevision,synced:this.lastAckRaw?saveChecksum(this.lastAckRaw):null,pending:this.pending?{id:this.pending.id,digest:saveChecksum(this.pending.raw),revision:this.pending.revision,claim:this.pending.claim}:null,dirty:!!this.dirty}));}catch(e){}},
  async init(){
   this.initialFreshRaw=saveFreshRaw;
+  const mailParams=new URLSearchParams(location.hash.slice(1));
+  const fromMail=['access_token','error','error_description','error_code'].some(k=>mailParams.has(k));
   try{
    const config=JSON.parse(document.getElementById('sqAccountConfig').textContent);this.api=new SQCloudAPI(config);
    const key='sq.restaurant.client';let client;try{client=sessionStorage.getItem(key);}catch(e){}
@@ -5117,17 +5131,18 @@ window.SQAccounts={
    this.heartbeatTimer=setInterval(()=>this.tick(),15000);
    document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.tick();});
    window.addEventListener('online',()=>this.tick());window.addEventListener('pagehide',()=>this.releaseOnExit());
-   window.addEventListener('hashchange',()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.has('access_token')||h.has('error')||h.has('error_description'))location.reload();});
+   window.addEventListener('hashchange',()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.has('access_token')||h.has('error')||h.has('error_description')||h.has('error_code'))location.reload();});
    window.addEventListener('storage',event=>{
     if(event.key!==this.api.storageKey||!this.uid)return;
     const next=this.api.readSession();if(next?.user.id===this.uid)return;
     this.phase='authchanged';this.show('浏览器登录状态已变化','<p>当前账号进度已保留在本机，请核对登录状态后继续。</p><div class="account-actions"><button id="sqReauth">重新登录</button><button id="sqBackup">导出本机进度</button><button id="sqStayGuest">返回游客</button></div>',false,true);
     clearTimeout(this.timer);this.bind('sqReauth',()=>this.loginForm());this.bind('sqBackup',()=>exportSave());this.bind('sqStayGuest',()=>this.leaveAccount(false));
    });
+   if(fromMail)this.show('验证邮件链接','<p>正在验证，请稍候…</p>',false,true);
    const recovery=await this.api.acceptRedirect();
    if(recovery){this.passwordForm();return;}
    if(this.api.session){this.show('连接餐厅账号','<p>正在核对云端与本机进度…</p>',false,true);await this.connect();}
-  }catch(e){this.note(SQCloudAPI.message(e));this.status();if(this.layer&&!this.layer.hidden)this.loginForm(SQCloudAPI.message(e));}
+  }catch(e){this.note(SQCloudAPI.message(e));this.status();if(fromMail||(this.layer&&!this.layer.hidden))this.loginForm(SQCloudAPI.message(e));}
  },
  visible(){return !!this.layer&&!this.layer.hidden;},
  saveGateEntry(){
@@ -5183,11 +5198,12 @@ window.SQAccounts={
   if(this.uid)this.dashboard();else this.loginForm();
  },
  loginForm(message=''){
-  this.show('登录餐厅账号','<label>邮箱<input id="sqEmail" type="email" autocomplete="username" inputmode="email" maxlength="254"></label><label>密码<input id="sqPassword" type="password" autocomplete="current-password" maxlength="128"></label><div class="account-actions"><button id="sqSignIn" class="primary">登录</button><button id="sqRegister">注册账号</button><button id="sqForgot">忘记密码</button></div><p class="account-note">游客进度会保留；登录后先核对存档，再开始同步。</p>');
+  this.show('登录餐厅账号','<label>邮箱<input id="sqEmail" type="email" autocomplete="username" inputmode="email" maxlength="254"></label><label>密码<input id="sqPassword" type="password" autocomplete="current-password" maxlength="128"></label><div class="account-actions"><button id="sqSignIn" class="primary">登录</button><button id="sqRegister">注册账号</button><button id="sqForgot">忘记密码</button><button id="sqEmailCodeEntry">邮箱验证码</button></div><p class="account-note">游客进度会保留；登录后先核对存档，再开始同步。</p>');
   this.error(message);this.bind('sqSignIn',async()=>{const email=document.getElementById('sqEmail').value,password=document.getElementById('sqPassword').value;await this.loginCredentials(email,password);});
-  this.bind('sqRegister',()=>this.registerForm());this.bind('sqForgot',()=>this.recoveryForm());
+  this.bind('sqRegister',()=>this.registerForm());this.bind('sqForgot',()=>this.recoveryForm());this.bind('sqEmailCodeEntry',()=>this.emailCodeForm());
+  if(this.api.pendingRedirect){const b=document.createElement('button');b.id='sqRetryMail';b.textContent='重试验证邮件';this.layer.querySelector('.account-actions').append(b);this.bind('sqRetryMail',async()=>{try{const recovery=await this.api.acceptRedirect();if(recovery)this.passwordForm();else await this.connect();}catch(e){this.loginForm(SQCloudAPI.message(e));}});}
   if(this.uid){const b=document.createElement('button');b.id='sqStayGuest';b.textContent='返回游客';this.layer.querySelector('.account-actions').append(b);this.bind('sqStayGuest',()=>this.leaveAccount(true));}
-  if(this.uid)document.getElementById('sqRegister').hidden=true;
+  if(this.uid){document.getElementById('sqRegister').hidden=true;document.getElementById('sqEmailCodeEntry').hidden=true;}
  },
  async loginCredentials(email,password){
   if(gameLoaded&&!saveReadBlocked)saveGame();this.pause();clearTimeout(this.timer);if(this.uploading)await this.uploading.catch(()=>{});
@@ -5202,12 +5218,32 @@ window.SQAccounts={
    const name=document.getElementById('sqName').value.trim(),email=document.getElementById('sqEmail').value,password=document.getElementById('sqPassword').value;
    if(!name||password.length<10)throw Error('请填写昵称，并设置至少10位密码');
    const result=await this.api.signUp(email,password,name,location.origin+location.pathname);
-   if(result?.access_token)await this.connect(name);else this.loginForm('注册请求已提交，请先在邮箱中确认，再登录。');
+   if(result?.access_token)await this.connect(name);else this.emailCodeForm(email,'signup','注册邮件已发送，请填写邮件中的验证码。');
   });this.bind('sqBack',()=>this.loginForm());
  },
  recoveryForm(){
   this.show('找回密码','<label>账号邮箱<input id="sqEmail" type="email" autocomplete="email" inputmode="email"></label><div class="account-actions"><button id="sqRecover" class="primary">发送重置邮件</button><button id="sqBack">返回登录</button></div>');
-  this.bind('sqRecover',async()=>{await this.api.recover(document.getElementById('sqEmail').value,location.origin+location.pathname);this.loginForm('如果该邮箱已注册，将收到重置邮件，请检查收件箱。');});this.bind('sqBack',()=>this.loginForm());
+  this.bind('sqRecover',async()=>{const email=document.getElementById('sqEmail').value;await this.api.recover(email,location.origin+location.pathname);this.emailCodeForm(email,'recovery','如该邮箱已注册，将收到重置验证码，请查看收件箱。');});this.bind('sqBack',()=>this.loginForm());
+ },
+ emailCodeForm(email='',type='recovery',message=''){
+  this.show('邮箱验证码',`<label>账号邮箱<input id="sqEmail" type="email" autocomplete="email" inputmode="email" maxlength="254" value="${this.h(email)}"></label><label>验证用途<select id="sqCodeType"><option value="recovery" ${type==='recovery'?'selected':''}>找回密码</option><option value="signup" ${type==='signup'?'selected':''}>注册确认</option></select></label><label>邮件验证码<input id="sqEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="输入邮件中的验证码"></label><div class="account-actions"><button id="sqVerifyEmail" class="primary">验证并继续</button><button id="sqResendEmail">重新发送</button><button id="sqBack">返回登录</button></div><p class="account-note">在邮箱中查看验证码，回到这里填写。验证码不会写入游戏存档。</p>`,true,true);
+  this.error(message);
+  this.bind('sqVerifyEmail',async()=>{
+   const email=document.getElementById('sqEmail').value.trim(),code=document.getElementById('sqEmailCode').value.trim(),type=document.getElementById('sqCodeType').value;
+   if(!email||!/^\d{6,8}$/.test(code))throw Error('请填写邮箱和邮件中的验证码');
+   if(gameLoaded&&!saveReadBlocked)saveGame();this.pause();clearTimeout(this.timer);if(this.uploading)await this.uploading.catch(()=>{});
+   const candidate=new SQCloudAPI(this.api.config);await candidate.verifyEmailCode(email,code,type);
+   if(this.uid&&candidate.session.user.id!==this.uid)await this.leaveAccount(false);
+   this.api=candidate;this.api.storeSession(this.api.session);
+   if(type==='recovery')this.passwordForm();else await this.connect();
+  });
+  this.bind('sqResendEmail',async()=>{
+   const email=document.getElementById('sqEmail').value.trim(),type=document.getElementById('sqCodeType').value;
+   if(!email)throw Error('请先填写邮箱');
+   if(type==='recovery')await this.api.recover(email,location.origin+location.pathname);else await this.api.resendSignup(email,location.origin+location.pathname);
+   this.error('邮件已重新发送，请使用最新验证码；如暂未收到，可检查垃圾邮件。');
+  });
+  this.bind('sqBack',()=>this.loginForm());
  },
  passwordForm(){
   this.show('设置新密码','<label>新密码（至少10位）<input id="sqNewPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128"></label><div class="account-actions"><button id="sqChangePassword" class="primary">保存新密码</button></div>',false,true);
@@ -5319,6 +5355,8 @@ window.SQAccounts={
   }else if(['SESSION_MOVED','CLOUD_CONFLICT'].includes(code)){
    this.phase='conflict';this.show('云存档需要核对',`<p>${this.h(message)}</p><p class="account-note">本机进度仍保留，请先备份再选择要继续的版本。</p><div class="account-actions"><button id="sqBackup">导出本机进度</button><button id="sqReconnect" class="primary">重新核对</button><button id="sqStayGuest">返回游客</button></div>`,false,true);
    this.bind('sqBackup',()=>exportSave());this.bind('sqReconnect',()=>this.connect());this.bind('sqStayGuest',()=>this.leaveAccount(true));
+  }else if(this.layer?.querySelector('#sqVerifyEmail,#sqChangePassword')){
+   return;
   }else if(this.held){
    this.phase=this.uid?'offline':'guest';
    this.show('连接尚未完成',`<p>${this.h(message)}</p><p class="account-note">本机进度仍保留，可以重新核对，或退出账号返回游客。</p><div class="account-actions"><button id="sqReconnect" class="primary">重试连接</button><button id="sqBackup">导出本机进度</button><button id="sqStayGuest">返回游客</button></div>`,false,true);

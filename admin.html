@@ -5,7 +5,7 @@
 /* Shared account transport. Public project key only; administrator checks live in SQL. */
 window.SQCloudAPI=class SQCloudAPI{
  constructor(config){
-  this.config=config||{};this.session=null;this.refreshing=null;this.memory=null;
+  this.config=config||{};this.session=null;this.refreshing=null;this.memory=null;this.pendingRedirect=null;
   this.url=String(this.config.url||'').trim().replace(/\/$/,'');this.key=String(this.config.publishableKey||'').trim();
   this.enabled=!!(this.url&&this.key);this.storageKey='sq.restaurant.auth';
   if(this.enabled){
@@ -67,16 +67,28 @@ window.SQCloudAPI=class SQCloudAPI{
  }
  async recover(email,redirect){return this.request('/auth/v1/recover?redirect_to='+encodeURIComponent(redirect),{body:{email:email.trim()}});}
  async changePassword(password){await this.refresh();return this.request('/auth/v1/user',{method:'PUT',body:{password},token:this.session.access_token});}
+ async verifyEmailCode(email,code,type){
+  if(!['signup','recovery'].includes(type))throw Error('请选择注册确认或找回密码');
+  const result=await this.request('/auth/v1/verify',{body:{email:email.trim(),token:code.trim(),type}});
+  return this.storeSession(result);
+ }
+ async resendSignup(email,redirect){return this.request('/auth/v1/resend?redirect_to='+encodeURIComponent(redirect),{body:{type:'signup',email:email.trim()}});}
  async acceptRedirect(){
   const h=new URLSearchParams(location.hash.slice(1));
-  if(h.has('error')||h.has('error_description')){history.replaceState(null,'',location.pathname+location.search);throw Error('登录链接已失效，请重新发送验证或重置邮件');}
-  if(!h.has('access_token'))return false;
-  const access=h.get('access_token'),refresh=h.get('refresh_token'),type=h.get('type');
-  history.replaceState(null,'',location.pathname+location.search);
-  if(!access||!refresh)throw Error('登录链接不完整，请重新登录');
-  const user=await this.request('/auth/v1/user',{method:'GET',token:access});
-  this.storeSession({access_token:access,refresh_token:refresh,expires_in:Number(h.get('expires_in'))||3600,user});
-  return type==='recovery';
+  if(h.has('error')||h.has('error_description')||h.has('error_code')){
+   this.pendingRedirect=null;history.replaceState(null,'',location.pathname+location.search);
+   throw Error('邮件验证链接已失效，请重新发送邮件，或填写邮件验证码');
+  }
+  if(h.has('access_token')){
+   this.pendingRedirect={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),type:h.get('type'),expires_in:Number(h.get('expires_in'))||3600};
+   history.replaceState(null,'',location.pathname+location.search);
+  }
+  const pending=this.pendingRedirect;
+  if(!pending)return false;
+  if(!pending.access_token||!pending.refresh_token){this.pendingRedirect=null;throw Error('邮件验证信息不完整，请重新发送邮件或填写验证码');}
+  const user=await this.request('/auth/v1/user',{method:'GET',token:pending.access_token});
+  this.storeSession({...pending,user});this.pendingRedirect=null;
+  return pending.type==='recovery';
  }
  async signOut(){try{if(this.session)await this.request('/auth/v1/logout?scope=local',{body:{},token:this.session.access_token});}finally{this.clearSession();}}
  static id(){if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((n,i)=>([4,6,8,10].includes(i)?'-':'')+n.toString(16).padStart(2,'0')).join('');}
