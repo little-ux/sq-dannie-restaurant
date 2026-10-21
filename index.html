@@ -1238,6 +1238,8 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
 
 .account-working{font-size:13px;color:var(--muted);padding:6px 0;margin:6px 0;}
 
+
+.cell:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 </style>
 </head>
 <body>
@@ -1334,7 +1336,7 @@ body{min-height:var(--viewport-height);padding:var(--safe-top) var(--safe-right)
   <div class="account-entry"><span id="sqAccountStatus" class="account-status">游客 · 本机存档</span><button id="sqAccountEntry" onclick="SQAccounts.open()">登录／注册</button></div>
   <section class="settings-info" aria-labelledby="gameInfoTitle">
     <h4 id="gameInfoTitle">游戏信息</h4>
-    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.2</span><span class="release-badge">正式版</span></dd></div></dl>
+    <dl><div><dt>游戏名称</dt><dd id="gameNameLabel">SQ开的餐厅</dd></div><div><dt>版本</dt><dd><span id="gameVersionLabel">1.2.3</span><span class="release-badge">正式版</span></dd></div></dl>
   </section>
 </div>
 <div class="modal" id="audioModal" role="dialog" aria-modal="true" aria-labelledby="audioTitle" style="display:none;">
@@ -1423,7 +1425,7 @@ const SAVE_FAMILY = 'dncf-hard-campaign';
 const SAVE_KEY = 'dncfCampaignProtectedV1';
 const SAVE_SCHEMA = 8;
 const GAME_NAME = 'SQ开的餐厅';
-const GAME_VERSION = '1.2.2';
+const GAME_VERSION = '1.2.3';
 const GAME_FILE_NAME = GAME_NAME+'-v'+GAME_VERSION+'.html';
 const REGEN_MS = 60000;
 const BASE_STAMINA = 200;
@@ -1614,12 +1616,13 @@ function scheduleMusic(){
 
 function stopMusic(){clearInterval(musicTimer);musicTimer=null;playingMusicId=null;stopVoices(musicVoices);}
 function syncMusicPlayback(){
- if(!audioWanted()||!appearance.musicEnabled){stopMusic();updateAudioUi();return;}
+ if(!audioWanted()||!appearance.musicEnabled||appearance.musicVolume<=0){stopMusic();updateAudioUi();return;}
  const c=audio();if(!c){stopMusic();updateAudioUi();return;}const id=audioHasKey(MUSIC_TRACKS,appearance.musicTrack)?appearance.musicTrack:'sunny';
  if(musicTimer!==null&&playingMusicId===id){if(Date.now()-musicLastTick>1500)safeScheduleMusic();updateAudioUi();return;}
  stopMusic();playingMusicId=id;musicStep=0;musicNextAt=c.currentTime+.06;musicLastTick=Date.now();musicTimer=setInterval(safeScheduleMusic,100);safeScheduleMusic();updateAudioUi();
 }
 function applyAudioPreferences(){
+ if(!audioWanted()){pauseAudioForBackground();return;}
  audio();if(actx&&masterGain){const now=actx.currentTime;[[masterGain,appearance.sound?1:0],[sfxGain,appearance.sfxEnabled?appearance.sfxVolume*SFX_BUS_BOOST:0],[musicGain,appearance.musicVolume*MUSIC_BUS_LEVEL]].forEach(([node,value])=>{node.gain.cancelScheduledValues(now);node.gain.setTargetAtTime(value,now,.025);});}
  if(!appearance.sound||!appearance.sfxEnabled)stopVoices(sfxVoices);syncMusicPlayback();if(audioWanted())startAudioWatchdog();else stopAudioWatchdog();
 }
@@ -1656,7 +1659,7 @@ function setMusicTrack(id){if(!audioHasKey(MUSIC_TRACKS,id))return;appearance.mu
 function setAudioVolume(kind,value){
   if(!['sfx','music'].includes(kind))return;
   const number=Number(value);if(!Number.isFinite(number))return;
-  appearance[kind+'Volume']=Math.max(0,Math.min(1,number/100));applyAudioPreferences();scheduleSave();
+  appearance[kind+'Volume']=Math.max(0,Math.min(1,number/100));applyAudioPreferences();schedulePreferenceSave();
 }
 
 function sClick(){ tone(800, 0, 0.06, 'triangle', 0.12); }
@@ -2482,7 +2485,7 @@ function drawMarket(){
 function tradeMarket(id){
   ensureLifeMarket();const offer=marketOffers().find(o=>o.id===id);if(!lifeWeekend()||!offer||life.market.bought.includes(id)||offer.reward.decor&&life.decor.owned.includes(offer.reward.decor))return;
   const plan=lifeBoardPlan(offer.req);if(!plan){toast('交换材料不足','err');return;}
-  plan.forEach(i=>grid[i]=null);selectedIdx=-1;life.market.bought.push(id);noteDaily('market');if(offer.reward.decor)ownLifeDecor(offer.reward.decor);if(offer.reward.tool)inv[offer.reward.tool]+=offer.reward.qty;
+  plan.forEach(i=>grid[i]=null);selectedIdx=-1;life.market.bought.push(id);noteDaily('market');if(offer.reward.decor)ownLifeDecor(offer.reward.decor);if(offer.reward.tool)inv[offer.reward.tool]=addResource(inv[offer.reward.tool],offer.reward.qty);
   lifeCommit('交换完成 · '+marketRewardText(offer.reward),'buy');
 }
 
@@ -2565,7 +2568,7 @@ function claimFriendRewards(id){
   if(!Array.isArray(entry.claimedLevels))entry.claimedLevels=[];
   let coins=0,energy=0;const tools={};
   levels.forEach(level=>{entry.claimedLevels.push(level);const r=FRIEND_LEVEL_REWARDS[level-1];coins+=r.gold||0;energy+=r.stamina||0;if(r.tool)tools[r.tool]=(tools[r.tool]||0)+r.qty;});
-  gold+=coins;totalGold+=coins;syncStamina();surpriseStaminaReserve+=energy;syncStamina();Object.entries(tools).forEach(([tool,qty])=>inv[tool]+=qty);
+  creditGold(coins);creditStamina(energy);Object.entries(tools).forEach(([tool,qty])=>inv[tool]=addResource(inv[tool],qty));
   checkAch();render();saveGame();sfx('ach');toast('领取'+levels.length+'份熟客等级奖励 · '+coins+'金币'+(energy?'＋'+energy+'体力':''),'ok');
 }
 function validMigrationFood(food){return food&&Number.isInteger(food.itemId)&&itemInfo(food.itemId)&&Number.isInteger(food.level)&&food.level>=1&&food.level<=MAX_LV;}
@@ -2618,7 +2621,7 @@ function renderShop(){
   renderDecorShop();
   document.getElementById('shopGold').textContent=gold;
   document.querySelectorAll('[data-tool-art]').forEach(el=>{if(!el.firstChild)el.innerHTML=toolArtwork(el.dataset.toolArt);});
-  const usable={speed:inv.speed>0&&stamina<maxStamina,bomb:inv.bomb>0&&grid.some(Boolean),tempSlot:inv.tempSlot>0&&tempAdd<12,mergeAll:inv.mergeAll>0,infinite:inv.infinite>0&&!isInfiniteActive()};
+  const usable={speed:inv.speed>0&&stamina<maxStamina,bomb:inv.bomb>0&&grid.some(Boolean),tempSlot:inv.tempSlot>0&&tempAdd<12,mergeAll:inv.mergeAll>0&&hasMergePair(),infinite:inv.infinite>0&&!isInfiniteActive()};
   Object.keys(prices).forEach(kind=>{const button=document.getElementById('buy_'+kind),locked=cLv<TOOL_LEVELS[kind];button.textContent='购买';button.disabled=locked||gold<prices[kind];button.title=locked?'餐厅Lv'+TOOL_LEVELS[kind]+'可购买':gold<prices[kind]?'金币不足':'花费'+prices[kind]+'金币购买1份';document.getElementById('toolPrice_'+kind).textContent=prices[kind]+'金币';document.getElementById('toolLevel_'+kind).textContent=locked?'Lv'+TOOL_LEVELS[kind]+'可购买':'';const use=document.getElementById(kind==='infinite'?'useInfinite':'use_'+kind);use.disabled=!usable[kind];use.textContent=kind==='infinite'&&isInfiniteActive()?'生效中':'使用';});
 }
 function puzzleChapter(p){return p.chapter||1;}
@@ -2684,7 +2687,7 @@ function claimPuzzleStars(){
  const pending=pendingStarRewards();if(!pending.length)return;
  let coins=0,energy=0;const tools={};
  pending.forEach(stars=>{life.puzzles.starClaimed.push(stars);const r=PUZZLE_STAR_REWARDS[stars/10-1];coins+=r.gold;energy+=r.stamina||0;if(r.tool)tools[r.tool]=(tools[r.tool]||0)+r.qty;});
- gold+=coins;totalGold+=coins;syncStamina();surpriseStaminaReserve+=energy;syncStamina();Object.entries(tools).forEach(([kind,qty])=>inv[kind]+=qty);
+ creditGold(coins);creditStamina(energy);Object.entries(tools).forEach(([kind,qty])=>inv[kind]=addResource(inv[kind],qty));
  checkAch();render();drawRestaurant();saveGame();sfx('ach');toast('已领取'+pending.length+'份星徽奖励 · '+coins+'金币','ok');
 }
 function defaultAvatar(id=''){
@@ -2749,7 +2752,7 @@ function renderDecorShop(){
 function buyRestaurantDecor(id){
  const d=NEW_DECORS.find(d=>d.id===id&&d.price);if(!d||life.decor.owned.includes(id))return;if(gold<d.price){toast('金币不足','err');return;}if(!confirmCoinSpend('购买装扮：'+d.name,d.price,'购买后自动摆放。',()=>buyRestaurantDecor(id)))return;gold-=d.price;life.decor.owned.push(id);life.decor.placed[d.slot]=id;render();saveGame();sfx('buy');toast('已购入并摆放：'+d.name,'ok');
 }
-function audioWanted(){return gameLoaded&&!saveReadBlocked&&audioUnlocked&&!document.hidden&&appearance.sound;}
+function audioWanted(){return gameLoaded&&!saveReadBlocked&&audioUnlocked&&!document.hidden&&appearance.sound&&((appearance.sfxEnabled&&appearance.sfxVolume>0)||(appearance.musicEnabled&&appearance.musicVolume>0));}
 function discardAudioContext(){
  stopMusic();stopVoices(sfxVoices);audioAttempt++;audioResume=null;audioResumeAt=0;musicPercussionNoise=null;
  if(actx){actx.onstatechange=null;try{if(actx.state!=='closed')Promise.resolve(actx.close()).catch(()=>{});}catch(e){}}
@@ -3095,6 +3098,7 @@ function exportPortableGame(){
   clone.querySelectorAll('[data-inline-select]').forEach(wrap=>{const select=wrap.querySelector('select');if(!select){wrap.remove();return;}select.hidden=false;select.removeAttribute('aria-hidden');select.removeAttribute('tabindex');wrap.replaceWith(select);});
   clone.querySelectorAll('[data-save-inert]').forEach(el=>{el.removeAttribute('inert');el.removeAttribute('data-save-inert');});
   clone.querySelectorAll('link[rel="manifest"],link[rel="apple-touch-icon"],#portableSave').forEach(el=>el.remove());
+  clone.querySelectorAll('#regularName,input[name="regularPref"]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value='';});
   clone.querySelectorAll('.modal').forEach(el=>el.style.display='none');const gate=clone.querySelector('#saveSafetyGate');if(gate)gate.hidden=true;
   const backdrop=clone.querySelector('#modalBackdrop');if(backdrop)backdrop.hidden=true;clone.querySelector('body')?.classList.remove('modal-open');clone.querySelector('#fxLayer')?.replaceChildren();
   clone.querySelectorAll('.cell-fx,.resource-fx,.merged').forEach(el=>el.classList.remove('cell-fx','resource-fx','merged'));
@@ -3161,7 +3165,7 @@ function grantUpdateTools(){
 }
 function grantLegacyStarterTools(){
   if(starterToolsGranted)return false;
-  ['speed','bomb','tempSlot','mergeAll','infinite'].forEach(key=>inv[key]++);
+  ['speed','bomb','tempSlot','mergeAll','infinite'].forEach(key=>inv[key]=addResource(inv[key],1));
   starterToolsGranted=true;return true;
 }
 let infiniteUntil=0;
@@ -3327,7 +3331,12 @@ function packSave(){
   }};
   return sealSave(packed);
 }
+let preferenceSaveTimer=null;
+function schedulePreferenceSave(){
+ clearTimeout(preferenceSaveTimer);preferenceSaveTimer=setTimeout(()=>{preferenceSaveTimer=null;saveGame();},350);
+}
 function saveGame(){
+ clearTimeout(preferenceSaveTimer);preferenceSaveTimer=null;
  if(saveReadBlocked||!gameLoaded||saveWriting)return false;saveWriting=true;
  try{
   acquireSaveLease();const existing=gameStorage().getItem(SAVE_KEY);
@@ -3343,6 +3352,19 @@ function saveGame(){
   updateSaveSafetyBanner();window.SQAccounts?.saved(raw);return true;
  }catch(e){storageAvailable=false;openSaveGate('保存未完成，已暂停游玩和自动覆盖。请导出当前内存进度：'+e.message);return false;}
  finally{saveWriting=false;}
+}
+// Keep valid long-running saves inside the resource bounds accepted by the loader.
+function addResource(current,amount){
+ if(!Number.isSafeInteger(current)||current<0||!Number.isSafeInteger(amount)||amount<0)throw Error('资源数量无效');
+ return current>Number.MAX_SAFE_INTEGER-amount?Number.MAX_SAFE_INTEGER:current+amount;
+}
+function creditGold(amount){gold=addResource(gold,amount);totalGold=addResource(totalGold,amount);}
+function creditStamina(amount){
+ syncStamina();surpriseStaminaReserve=addResource(surpriseStaminaReserve,amount);syncStamina();
+}
+function hasMergePair(){
+ const seen=new Set();
+ return grid.some(food=>{if(!food||food.level>=MAX_LV)return false;const key=food.itemId+':'+food.level;if(seen.has(key))return true;seen.add(key);return false;});
 }
 function integer(value,fallback=0,min=0,max=Number.MAX_SAFE_INTEGER){
  return Number.isFinite(value)?Math.max(min,Math.min(max,Math.floor(value))):fallback;
@@ -3490,13 +3512,18 @@ function loadGame(){
  }catch(e){storageAvailable=false;openSaveGate('当前存档没有载入，自动保存已暂停：'+e.message);}
 }
 
+let catchUpQueued=false;
 function catchUp(){
-  if(!gameLoaded||saveReadBlocked)return;
+ if(!gameLoaded||saveReadBlocked||document.hidden||catchUpQueued)return;
+ catchUpQueued=true;
+ queueMicrotask(()=>{
+  catchUpQueued=false;if(!gameLoaded||saveReadBlocked||document.hidden)return;
   const gained=syncStamina();ensureDaily();saveGame();render();
   if(gained)toast('恢复 '+gained+' 点体力','ok');
+ });
 }
 setInterval(()=>{
-  if(!gameLoaded||saveReadBlocked)return;
+  if(!gameLoaded||saveReadBlocked||document.hidden)return;
   const before=daily&&daily.day;ensureDaily();
   const gained=syncStamina();updateRecoveryUi();
   if(before!==daily.day){renderEconomyUi();if(document.getElementById('challengeModal').style.display==='block')openChallenges(dailyTab);saveGame();}
@@ -3599,17 +3626,17 @@ function addExp(amount){
 function claimDaily(id){
   ensureDaily();const task=activeDailyTasks().find(t=>t.id===id);
   if(!task||daily.claimed.includes(id)||daily[id]<task.target)return;
-  daily.claimed.push(id);gold+=task.gold;totalGold+=task.gold;addExp(task.exp);checkAch();render();saveGame();openChallenges('tasks');sfx('coin');toast('已领取 '+task.gold+'💰 · '+task.exp+'经验','ok');
+  daily.claimed.push(id);creditGold(task.gold);addExp(task.exp);checkAch();render();saveGame();openChallenges('tasks');sfx('coin');toast('已领取 '+task.gold+'💰 · '+task.exp+'经验','ok');
 }
 function claimAttendance(){
   ensureDaily();const day=calendarDate().getDate();if(attendance.days.includes(day))return;
-  attendance.days.push(day);gold+=20;totalGold+=20;syncStamina();surpriseStaminaReserve+=5;syncStamina();
+  attendance.days.push(day);creditGold(20);creditStamina(5);
   checkAch();render();saveGame();openChallenges('signin');sfx('coin');resourceEffect('gold','+20💰');toast('签到成功：20金币＋5体力，溢出体力会暂存','ok');
 }
 function claimAttendanceMilestone(days){
   ensureDaily();const reward=ATTENDANCE_MILESTONES.find(m=>m.days===days);
   if(!reward||attendance.days.length<days||attendance.claimed.includes(days))return;
-  attendance.claimed.push(days);inv[reward.tool]++;render();saveGame();openChallenges('signin');sfx('ach');toast('月度签到奖励：'+TOOL_NAMES[reward.tool]+'×1','ok');
+  attendance.claimed.push(days);inv[reward.tool]=addResource(inv[reward.tool],1);render();saveGame();openChallenges('signin');sfx('ach');toast('月度签到奖励：'+TOOL_NAMES[reward.tool]+'×1','ok');
 }
 function drawAttendance(){
   const today=calendarDate(),day=today.getDate(),year=today.getFullYear(),month=today.getMonth(),length=new Date(year,month+1,0).getDate(),offset=(new Date(year,month,1).getDay()+6)%7,signed=attendance.days.includes(day);
@@ -3658,7 +3685,7 @@ function openStamina(){
   document.getElementById('staminaModal').style.display='block';fitControls();
 }
 function openShop(){
-  renderEconomyUi();document.getElementById('shopModal').style.display='block';selectShopTab(shopTab);renderShop();fitControls();
+  document.getElementById('shopModal').style.display='block';selectShopTab(shopTab);renderEconomyUi();fitControls();
 }
 function renderEconomyUi(){
   updateRecoveryUi();renderStaminaPanel();
@@ -3671,7 +3698,8 @@ function renderEconomyUi(){
   Object.keys(prices).forEach(k=>{const b=document.getElementById('buy_'+k);if(b){b.textContent=TOOL_NAMES[k]+' '+prices[k]+'💰';b.disabled=cLv<TOOL_LEVELS[k];b.title='餐厅 Lv'+TOOL_LEVELS[k]+' 解锁';}});
   const combo=Date.now()-meta.lastDeliveryAt<=180000?meta.combo:0;
   refreshRewardNotices();
-  renderThemeShelf();renderShop();updateSettingsUi();
+  if(document.getElementById('shopModal').style.display==='block'){renderThemeShelf();renderShop();}
+  updateSettingsUi();
   if(document.getElementById('upgradeModal').style.display==='block')renderUpgrades();
 }
 
@@ -3731,8 +3759,8 @@ function checkAch(){
   achs.forEach(a=>{
     if(!a.done && checks[a.id]){
       a.done = true;
-      if(a.gold){ gold += a.gold; totalGold += a.gold; }
-      if(a.sta){ stamina = Math.min(maxStamina, stamina+a.sta); }
+      if(a.gold)creditGold(a.gold);
+      if(a.sta)creditStamina(a.sta);
       names.push(a.name + '（' + [a.gold?a.gold+'💰':null, a.sta?a.sta+'⚡':null].filter(Boolean).join(' ') + '）');
     }
   });
@@ -3741,7 +3769,7 @@ function checkAch(){
 
 function triggerEvent(){
   const r=Math.random();let text='';syncStamina();
-  if(r<.4){const amount=8+Math.floor(Math.random()*13);gold+=amount;totalGold+=amount;text='熟客小费：+'+amount+' 金币，继续用心经营！';}
+  if(r<.4){const amount=8+Math.floor(Math.random()*13);creditGold(amount);text='熟客小费：+'+amount+' 金币，继续用心经营！';}
   else if(r<.75){const amount=Math.min(3,maxStamina-stamina);stamina+=amount;text=amount?'客人送来茶点：恢复 '+amount+' 点体力。':'客人称赞了今天的料理，餐厅收获好口碑！';}
   else{halfRefresh=true;text='评论家赠券：下一次手动刷新订单半价。';}
   document.getElementById('evtText').textContent=text;document.getElementById('evtModal').style.display='block';saveGame();
@@ -3786,10 +3814,10 @@ function surpriseOrderPanel(order){
 function grantOrderSurprise(order){
   const reward=order.surprise;if(!reward)return '';
   if(reward.type==='stamina'){
-    syncStamina();surpriseStaminaReserve+=10;syncStamina();
+    creditStamina(10);
     return '+10体力'+(surpriseStaminaReserve?'（待补'+surpriseStaminaReserve+'）':'');
   }
-  inv[reward.item]++;return TOOL_NAMES[reward.item]+'×1';
+  inv[reward.item]=addResource(inv[reward.item],1);return TOOL_NAMES[reward.item]+'×1';
 }
 function makeOrder(req,flags={}){
   const baseReward=Math.max(1,Math.round(req.reduce((sum,r)=>sum+foodValue(r.id,r.lv),0)*(flags.high?1.12:flags.complex?1.04:flags.dish?1.08:1)));
@@ -3995,7 +4023,15 @@ function render(){
     } else {
       cell.classList.add('empty');
     }
+    cell.setAttribute('role','button');cell.tabIndex=0;
+    cell.setAttribute('aria-label','第'+(i+1)+'格'+(it?'，'+evo(it.itemId,it.level).name+' L'+it.level:'，空格'));
+    cell.setAttribute('aria-pressed',String(i===selectedIdx));
     cell.onclick = ()=>onCellTap(i);
+    cell.onkeydown=event=>{
+      if(event.key!=='Enter'&&event.key!==' ')return;
+      event.preventDefault();if(!gameLoaded||saveReadBlocked||expenseRequest)return;
+      cell.click();document.querySelector('#grid [data-idx="'+i+'"]')?.focus({preventScroll:true});
+    };
     ge.appendChild(cell);
   }
   renderGens();
@@ -4085,8 +4121,12 @@ function orderRestaurantPanel(order){
   return h;
 }
 
+let generatorRenderKey='';
 function renderGens(){
-  const box=document.getElementById('genBox');box.innerHTML='';
+  const box=document.getElementById('genBox');
+  const key=gens.map(g=>{const lv=Math.min(g.lv,Math.max(1,genSelState[g.itemId]||1));return [g.itemId,g.lv,g.unlocked,lv,formKnown(g.itemId,lv)].join(':');}).join('|');
+  if(key===generatorRenderKey&&box.children.length===gens.length)return;
+  generatorRenderKey=key;box.innerHTML='';
   gens.forEach((g,idx)=>{
     const d=itemInfo(g.itemId),card=document.createElement('div');card.className='gen-card'+(g.unlocked?'':' is-locked');card.dataset.generator=g.itemId;
     if(!g.unlocked){
@@ -4428,7 +4468,7 @@ function deliver(idx){
  plan.indices.forEach(i=>grid[i]=null);selectedIdx=-1;ensureDaily();syncStamina();const now=Date.now();
  meta.combo=now-meta.lastDeliveryAt<=180000?Math.min(5,meta.combo+1):1;meta.lastDeliveryAt=now;
  const bonus=Math.floor(o.rw*Math.min(8,(meta.combo-1)*2)/100),reward=bonusGold(o.rw+bonus);
- gold+=reward;totalGold+=reward;stats.deliver++;daily.deliver++;o.done=true;
+ creditGold(reward);stats.deliver++;daily.deliver++;o.done=true;
  if(regularById(o.customerId))noteDaily('guests');noteDaily('signatures',o.req.filter(r=>activeSignature(r.id)).length);
  const growth=applyRestaurantDelivery(o),surpriseText=grantOrderSurprise(o),leveled=addExp(bonusExp(o.exp));lifeAfterDelivery();
  if(stats.deliver-meta.lastEventDeliver>=20){meta.lastEventDeliver=stats.deliver;triggerEvent();}
@@ -4442,6 +4482,7 @@ const TOOL_LEVELS={speed:12,bomb:6,tempSlot:8,mergeAll:10,infinite:1};
 const TOOL_NAMES={speed:'⚡加速卡',bomb:'💣炸弹',tempSlot:'📦临时格',mergeAll:'✨一键合并',infinite:'♾️无限体力'};
 function buyItem(t){
   if(!Object.prototype.hasOwnProperty.call(prices,t))return;
+  if(inv[t]>=Number.MAX_SAFE_INTEGER){toast('此道具已达持有上限','err');return;}
   if(cLv<TOOL_LEVELS[t]){toast('餐厅 Lv'+TOOL_LEVELS[t]+' 解锁此道具','err');return;}
   if(gold<prices[t]){toast('需要 '+prices[t]+' 金币','err');return;}
   if(!confirmCoinSpend('购买'+TOOL_NAMES[t]+'×1',prices[t],'购买后进入背包，需手动使用。',()=>buyItem(t)))return;
@@ -4484,7 +4525,7 @@ function useTemp(){
 }
 function useMerge(){
   if(inv.mergeAll<=0){ toast('没有一键合并','err'); sfx('err'); return; }
-  const canMerge=grid.some((a,i)=>a&&a.level<MAX_LV&&grid.some((b,j)=>j>i&&b&&a.itemId===b.itemId&&a.level===b.level));
+  const canMerge=hasMergePair();
   if(!canMerge){toast('没有可合并的','err');sfx('err');return;}
   if(!confirmToolUse('mergeAll','连续升级棋盘上同种同级食物，直到无法继续；不会合成跨系菜品。',()=>useMerge()))return;
   let count = 0, changed = true;
